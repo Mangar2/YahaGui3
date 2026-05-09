@@ -1,0 +1,50 @@
+:root {
+  font-family: "Segoe UI", "Noto Sans", sans-serif;
+  color: #1e1f24;
+  background: #f5f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.app-header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.app-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4b5563;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+}
+
+.app-panel {
+  max-width: 56rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.app-panel h2 {
+  margin-top: 0;
+}

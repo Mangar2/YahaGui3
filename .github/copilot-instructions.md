@@ -10,9 +10,11 @@ copilot_skills_project_paths:.github/skills,.claude/skills,.agents/skills
 copilot_skills_personal_paths:~/.copilot/skills,~/.agents/skills
 copilot_skills_quellen:gh_skill,anthropics/skills,github/awesome-copilot
 copilot_skills_regel:vor_jeder_umsetzung_relevante_skills_laden_und_beachten
+external_actions_rule:jede_aktion_ausserhalb_des_repos_muss_vorher_erklaert_und_abgesprochen_sein
+external_actions_user_policy:user_skippt_alle_nicht_vorher_abgesprochenen_aktionen_ausserhalb_des_repos
 legacy_app_path:spec/original/src
 legacy_goal:funktionell_weitgehend_nachbauen
 frontend:react,pwa
 backend:nicht_teil_der_implementierung,leicht_abweichend_vom_backend_der_bestandsanwendung
-required_skills:get-search-view-results,agent-customization,yaha-ui-principles
+required_skills:get-search-view-results,agent-customization,yaha-ui-principles,react-modern-standards,react-code-review-modernity,typescript-strict-quality
 required_agents:Explore
