@@ -51,6 +51,9 @@ export default tseslint.config(
       'jsdoc/require-returns': 'error',
       'jsdoc/require-returns-type': 'error',
       'jsdoc/require-returns-description': 'error',
+      'max-lines': ['error', { max: 800, skipBlankLines: true, skipComments: true }],
+      'max-depth': ['error', 3],
+      complexity: ['error', 12],
     },
   },
 )
