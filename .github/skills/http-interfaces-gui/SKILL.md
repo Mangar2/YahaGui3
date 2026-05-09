@@ -1,0 +1,19 @@
+---
+name: http-interfaces-gui
+description: "Nutzen nur wenn HTTP-Schnittstellen fuer GUI implementiert/geaendert werden. Detailvertrag in SPEC-http-interfaces-gui.md im gleichen Ordner laden."
+---
+
+ziel:korrekte_nutzung_der_yaha_http_schnittstellen
+regel_1:detaildoku_nur_laden_wenn_file_store_message_store_oder_publish_code_gebaut_geaendert_geprueft_wird
+regel_2:bei_schnittstellen_code_immer_zuerst_SPEC_http_interfaces_gui_md_lesen
+regel_3:request_response_fehlercodes_und_content_types_1zu1_nach_spec_umsetzen
+regel_4:bei_json_api_daten_strikte_validierung_und_explizite_typkonvertierung
+regel_5:fehlerbehandlung_vollstaendig_professionell_ohne_stille_fehler
+
+schnittstellen_1:FileStore_GET_POST
+schnittstellen_2:MessageStore_GET_und_POST_store
+schnittstellen_3:HttpMqttInterface_POST_publish
+dev_test_host:http://192.168.0.183:80
+dev_test_beispiel_filestore:POST_/kvstore/automation/rules
+
+detail_doku:SPEC-http-interfaces-gui.md
