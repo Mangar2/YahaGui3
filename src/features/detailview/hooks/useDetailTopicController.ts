@@ -93,6 +93,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
 
       try {
         const payload = await storeClientRef.current.loadTopicSection(topic, {
+          time: true,
           history: true,
           reason: true,
           levelAmount: DETAIL_INITIAL_LEVEL_AMOUNT,
@@ -138,6 +139,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
           const oldTime = oldNode?.time;
 
           const valuePayload = await storeClientRef.current.loadTopicSection(currentTopic, {
+            time: true,
             history: false,
             reason: true,
             levelAmount: DETAIL_POLL_LEVEL_AMOUNT,
@@ -152,6 +154,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
 
           if (hasTimestampUpdate) {
             const historyPayload = await storeClientRef.current.loadTopicSection(currentTopic, {
+              time: true,
               history: true,
               reason: true,
               levelAmount: DETAIL_POLL_LEVEL_AMOUNT,
@@ -190,6 +193,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
       await publishClientRef.current.publishChange(topic, newValue);
 
       const payload = await storeClientRef.current.loadTopicSection(topic, {
+        time: true,
         history: true,
         reason: true,
         levelAmount: DETAIL_INITIAL_LEVEL_AMOUNT,

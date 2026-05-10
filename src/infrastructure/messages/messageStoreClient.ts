@@ -55,6 +55,7 @@ export class MessageStoreClient {
       method: 'GET',
       headers: {
         levelamount: String(options.levelAmount),
+        time: options.time ? 'true' : 'false',
         history: options.history ? 'true' : 'false',
         reason: options.reason ? 'true' : 'false',
       },

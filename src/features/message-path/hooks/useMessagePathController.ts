@@ -35,6 +35,7 @@ export interface MessagePathControllerState {
 const OVERVIEW_LEVEL_AMOUNT = 7;
 const OVERVIEW_REFRESH_INTERVAL_MS = 2000;
 const MAX_POST_FAILURES_BEFORE_FULL_RESYNC = 2;
+const OVERVIEW_INCLUDE_TIME = false;
 const OVERVIEW_INCLUDE_HISTORY = false;
 const OVERVIEW_INCLUDE_REASON = false;
 
@@ -144,6 +145,7 @@ export function useMessagePathController(): MessagePathControllerState {
           const requestNodes = determineRequestNodes(currentNode, OVERVIEW_INCLUDE_HISTORY, OVERVIEW_INCLUDE_REASON);
           const request: MessageStoreDirectRequest = {
             topic: joinTopic(currentTopicChunks),
+            time: OVERVIEW_INCLUDE_TIME,
             history: OVERVIEW_INCLUDE_HISTORY,
             reason: OVERVIEW_INCLUDE_REASON,
             levelAmount: OVERVIEW_LEVEL_AMOUNT,
@@ -302,6 +304,7 @@ function buildTopicSnapshotNodes(activeNode: MessageTreeNode | null): MessageTop
  */
 async function fetchOverviewSection(client: MessageStoreClient, topicChunks: string[]): Promise<MessageTopicData[]> {
   return client.loadTopicSection(joinTopic(topicChunks), {
+    time: OVERVIEW_INCLUDE_TIME,
     history: OVERVIEW_INCLUDE_HISTORY,
     reason: OVERVIEW_INCLUDE_REASON,
     levelAmount: OVERVIEW_LEVEL_AMOUNT,

@@ -21,6 +21,7 @@ export interface MessageTopicData {
 
 export interface MessageStoreDirectRequest {
   topic?: string;
+  time: boolean;
   history: boolean;
   reason: boolean;
   levelAmount: number;
@@ -28,6 +29,7 @@ export interface MessageStoreDirectRequest {
 }
 
 export interface MessageStoreQueryOptions {
+  time: boolean;
   history: boolean;
   reason: boolean;
   levelAmount: number;

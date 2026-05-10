@@ -4,6 +4,7 @@ import { MessageStoreClient } from './messageStoreClient';
 const VERIFY_MAX_ATTEMPTS = 10;
 const VERIFY_INTERVAL_MS = 700;
 const VERIFY_QUERY_OPTIONS: MessageStoreQueryOptions = {
+  time: false,
   history: false,
   reason: false,
   levelAmount: 0,
