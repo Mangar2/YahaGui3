@@ -68,32 +68,87 @@ const ICON_TOPIC_TYPE_MAP: Record<string, ControlIconKind> = {
  * @returns {TopicControlItem[]} Sorted topic controls with icon, label and value metadata.
  */
 export function buildTopicControlItems(activeNode: MessageTreeNode | null, topicChunks: string[]): TopicControlItem[] {
-  if (!activeNode?.childs) {
+  if (!activeNode) {
     return [];
   }
 
   const items: TopicControlItem[] = [];
-  for (const childNode of Object.values(activeNode.childs)) {
+  const childNodes = activeNode.childs ? Object.values(activeNode.childs) : [];
+  for (const childNode of childNodes) {
     if (typeof childNode.topic !== 'string' || childNode.topic.length === 0 || childNode.value === undefined) {
       continue;
     }
+    if (splitTopic(childNode.topic).at(-1) === 'set') {
+      continue;
+    }
 
-    const topicType = decideTopicType(childNode.topic, childNode.value);
-    const isSwitch = isSwitchType(topicType, childNode.value);
-    const isSwitchOn = isSwitchOnValue(topicType, childNode.value);
-    items.push({
-      topic: childNode.topic,
-      label: deriveDisplayName(childNode.topic, topicChunks),
-      valueText: formatMessageScalar(childNode.value),
-      unit: UNIT_IDENTIFIER[topicType] ?? '',
-      topicType,
-      isSwitch,
-      isSwitchOn,
-      iconKind: decideIconKind(childNode.topic, topicType),
-    });
+    items.push(buildControlItem(childNode, topicChunks));
   }
 
-  return items.sort((left: TopicControlItem, right: TopicControlItem): number => {
+  // Legacy parity: if a node only exposes a "set" child, show the current node itself as control element.
+  if (items.length === 0 && shouldRenderCurrentNodeAsControl(activeNode, topicChunks)) {
+    items.push(buildControlItem(activeNode, topicChunks));
+  }
+
+  return sortControlItems(items);
+}
+
+/**
+ * Builds one control item from a tree node.
+ * @param node Source tree node.
+ * @param topicChunks Current topic path chunks from the URL.
+ * @returns {TopicControlItem} Control item metadata.
+ */
+function buildControlItem(node: MessageTreeNode, topicChunks: string[]): TopicControlItem {
+  const topic = node.topic ?? '';
+  const value = node.value ?? null;
+  const topicType = decideTopicType(topic, value);
+  const isSwitch = isSwitchType(topicType, value);
+  const isSwitchOn = isSwitchOnValue(topicType, value);
+
+  return {
+    topic,
+    label: deriveDisplayName(topic, topicChunks),
+    valueText: formatMessageScalar(value),
+    unit: UNIT_IDENTIFIER[topicType] ?? '',
+    topicType,
+    isSwitch,
+    isSwitchOn,
+    iconKind: decideIconKind(topic, topicType),
+  };
+}
+
+/**
+ * Checks whether current node should be rendered as control fallback.
+ * @param activeNode Active node.
+ * @param topicChunks Current topic chunks.
+ * @returns {boolean} True when current node should be rendered.
+ */
+function shouldRenderCurrentNodeAsControl(activeNode: MessageTreeNode, topicChunks: string[]): boolean {
+  if (typeof activeNode.topic !== 'string' || activeNode.topic.length === 0 || activeNode.value === undefined) {
+    return false;
+  }
+
+  // Do not render fallback at root level.
+  if (topicChunks.length === 0) {
+    return false;
+  }
+
+  const lastChunk = splitTopic(activeNode.topic).at(-1);
+  if (lastChunk === 'set') {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Sorts control items for stable UI ordering.
+ * @param items Unsorted control items.
+ * @returns {TopicControlItem[]} Sorted control items.
+ */
+function sortControlItems(items: TopicControlItem[]): TopicControlItem[] {
+  return [...items].sort((left: TopicControlItem, right: TopicControlItem): number => {
     if (left.topicType < right.topicType) {
       return -1;
     }

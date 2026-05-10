@@ -269,6 +269,9 @@ function buildNavItems(topicChunks: string[], activeNode: MessageTreeNode | null
   const childs = activeNode?.childs;
   if (childs) {
     for (const topicChunk of Object.keys(childs)) {
+      if (topicChunk === 'set') {
+        continue;
+      }
       items.push(topicChunk);
     }
   }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import type { TopicControlItem } from '../domain/messages/controlElementDecisions';
 import { getSnackbarDurationMs, type SnackbarSeverity } from '../config/notificationConfigService';
-import { DetailViewPage } from '../features/detailview/components/DetailViewPage';
+import { DetailViewPage } from '../features/detailview/components';
 import { LeftTopicNavigation } from '../features/message-path/components/LeftTopicNavigation';
 import { MessagePathBreadcrumb } from '../features/message-path/components/MessagePathBreadcrumb';
 import { useMessagePathController } from '../features/message-path/hooks/useMessagePathController';
@@ -107,6 +107,17 @@ export default function App(): JSX.Element {
     setViewState({ mode: 'overview', detailTopic: '' });
   }
 
+  /**
+   * Navigates via breadcrumb and leaves detail mode when active.
+   * @param depth Amount of topic chunks to keep.
+   */
+  function navigateBreadcrumb(depth: number): void {
+    navigateToDepth(depth);
+    if (viewState.mode === 'detail') {
+      openOverviewPage();
+    }
+  }
+
   const topSnackbar = snackbarStack.at(-1) ?? null;
 
   /**
@@ -140,7 +151,7 @@ export default function App(): JSX.Element {
   return (
     <main className="app-shell">
       <header className="app-header">
-        <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={navigateToDepth} />
+        <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={navigateBreadcrumb} />
       </header>
 
       {viewState.mode === 'overview' ? (
