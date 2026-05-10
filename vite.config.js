@@ -9,6 +9,10 @@ export default defineConfig({
         target: 'http://192.168.0.183',
         changeOrigin: true,
       },
+      '/publish': {
+        target: 'http://192.168.0.183',
+        changeOrigin: true,
+      },
     },
   },
 })

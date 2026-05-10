@@ -31,13 +31,16 @@ export class MessageStoreClientError extends Error {
  */
 export class MessageStoreClient {
   private readonly baseUrl: string;
+  private readonly storePath: string;
 
   /**
    * Creates a message-store client.
    * @param baseUrl Absolute base URL to the YAHA backend host.
+  * @param storePath Relative path for the message-store API.
    */
-  public constructor(baseUrl: string) {
+  public constructor(baseUrl: string, storePath: string) {
     this.baseUrl = baseUrl;
+    this.storePath = normalizePath(storePath);
   }
 
   /**
@@ -66,7 +69,7 @@ export class MessageStoreClient {
     * @returns {Promise<MessageTopicData[]>} Normalized payload list.
    */
   public async refreshTopicSection(request: MessageStoreDirectRequest): Promise<MessageTopicData[]> {
-    const endpoint = new URL('/store', this.baseUrl).toString();
+    const endpoint = new URL(this.storePath, this.baseUrl).toString();
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -85,7 +88,7 @@ export class MessageStoreClient {
    */
   private buildStoreEndpoint(topic: string): string {
     const encodedTopic = encodeTopicForPath(topic);
-    const endpoint = encodedTopic.length > 0 ? `/store/${encodedTopic}` : '/store';
+    const endpoint = encodedTopic.length > 0 ? `${this.storePath}/${encodedTopic}` : this.storePath;
     return new URL(endpoint, this.baseUrl).toString();
   }
 
@@ -293,4 +296,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 function isMessageScalar(value: unknown): value is string | number | boolean | null {
   return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+/**
+ * Normalizes path-like API route values.
+ * @param path Relative route path.
+ * @returns {string} Normalized route path with leading slash and no trailing slash.
+ */
+function normalizePath(path: string): string {
+  const normalizedPath = path.trim();
+  const prefixedPath = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+  if (prefixedPath.length > 1 && prefixedPath.endsWith('/')) {
+    return prefixedPath.slice(0, -1);
+  }
+  return prefixedPath;
 }

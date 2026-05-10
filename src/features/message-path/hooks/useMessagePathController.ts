@@ -1,20 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  buildTopicControlItems,
+  getNewSwitchValue,
+  type TopicControlItem,
+} from '../../../domain/messages/controlElementDecisions';
 import { createEmptyMessageTree, getNodeByTopicChunks, replaceManyNodes } from '../../../domain/messages/messageTree';
 import type { MessageStoreDirectRequest, MessageTreeNode, MessageTopicData } from '../../../domain/messages/interfaces';
 import { joinTopic, splitTopic } from '../../../domain/messages/topicPath';
 import { MessageStoreClient, MessageStoreClientError } from '../../../infrastructure/messages/messageStoreClient';
-import { getMessageStoreBaseUrl } from '../../../config/runtime';
+import { MessagePublishClient, MessagePublishClientError } from '../../../infrastructure/messages/messagePublishClient';
+import {
+  getMessageStoreBaseUrl,
+  getMessageStorePath,
+  getPublishBaseUrl,
+  getPublishPath,
+  getPublishTopicSetSuffix,
+} from '../../../config/runtime';
 import { useTopicQueryState } from './useTopicQueryState';
 
 export interface MessagePathControllerState {
   topicChunks: string[];
   activeNode: MessageTreeNode | null;
   navItems: string[];
+  controlItems: TopicControlItem[];
+  pendingPublishTopics: Record<string, boolean>;
   isLoading: boolean;
   lastRefreshIso: string | null;
   error: string | null;
   navigateToDepth: (depth: number) => void;
   selectNavItem: (navItem: string) => void;
+  publishControlValue: (item: TopicControlItem, checked: boolean) => Promise<void>;
 }
 
 const OVERVIEW_LEVEL_AMOUNT = 7;
@@ -31,7 +46,17 @@ export function useMessagePathController(): MessagePathControllerState {
   const [topic, setTopic] = useTopicQueryState();
   const topicChunks = useMemo((): string[] => splitTopic(topic), [topic]);
 
-  const clientRef = useRef<MessageStoreClient>(new MessageStoreClient(getMessageStoreBaseUrl()));
+  const clientRef = useRef<MessageStoreClient>(
+    new MessageStoreClient(getMessageStoreBaseUrl(), getMessageStorePath()),
+  );
+  const publishClientRef = useRef<MessagePublishClient>(
+    new MessagePublishClient(
+      getPublishBaseUrl(),
+      getPublishPath(),
+      getMessageStorePath(),
+      getPublishTopicSetSuffix(),
+    ),
+  );
   const refreshRunningRef = useRef<boolean>(false);
   const topicChunksRef = useRef<string[]>(topicChunks);
   const messageTreeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
@@ -42,6 +67,7 @@ export function useMessagePathController(): MessagePathControllerState {
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshIso, setLastRefreshIso] = useState<string | null>(null);
   const [consecutivePostFailures, setConsecutivePostFailures] = useState<number>(0);
+  const [pendingPublishTopics, setPendingPublishTopics] = useState<Record<string, boolean>>({});
 
   const activeNode = useMemo((): MessageTreeNode | null => {
     return getNodeByTopicChunks(messageTree, topicChunks);
@@ -50,6 +76,10 @@ export function useMessagePathController(): MessagePathControllerState {
   const navItems = useMemo((): string[] => {
     return buildNavItems(topicChunks, activeNode);
   }, [topicChunks, activeNode]);
+
+  const controlItems = useMemo((): TopicControlItem[] => {
+    return buildTopicControlItems(activeNode, topicChunks);
+  }, [activeNode, topicChunks]);
 
   useEffect((): void => {
     topicChunksRef.current = topicChunks;
@@ -175,15 +205,48 @@ export function useMessagePathController(): MessagePathControllerState {
     }
   }
 
+  /**
+   * Publishes a switch change and keeps pending state visible until backend confirmation.
+   * @param item Topic control item that should be changed.
+   * @param checked New checked state.
+   * @returns {Promise<void>}
+   */
+  async function publishControlValue(item: TopicControlItem, checked: boolean): Promise<void> {
+    if (pendingPublishTopics[item.topic] === true) {
+      return;
+    }
+
+    setPendingPublishTopics((currentState: Record<string, boolean>): Record<string, boolean> => ({
+      ...currentState,
+      [item.topic]: true,
+    }));
+
+    try {
+      const nextValue = getNewSwitchValue(item, checked);
+      await publishClientRef.current.publishChange(item.topic, nextValue);
+      setError(null);
+    } catch (unknownError: unknown) {
+      setError(formatPublishError(unknownError));
+    } finally {
+      setPendingPublishTopics((currentState: Record<string, boolean>): Record<string, boolean> => ({
+        ...currentState,
+        [item.topic]: false,
+      }));
+    }
+  }
+
   return {
     topicChunks,
     activeNode,
     navItems,
+    controlItems,
+    pendingPublishTopics,
     isLoading,
     lastRefreshIso,
     error,
     navigateToDepth,
     selectNavItem,
+    publishControlValue,
   };
 }
 
@@ -318,4 +381,19 @@ function formatLoadError(unknownError: unknown): string {
     return `Fehler beim Laden des Meldungsbaums: ${unknownError.message}`;
   }
   return 'Fehler beim Laden des Meldungsbaums: unbekannter Fehler';
+}
+
+/**
+ * Converts publish failures into a UI-safe message.
+ * @param unknownError Caught error value.
+ * @returns {string} Normalized message string.
+ */
+function formatPublishError(unknownError: unknown): string {
+  if (unknownError instanceof MessagePublishClientError) {
+    return `Fehler beim Publish: ${unknownError.message}`;
+  }
+  if (unknownError instanceof Error) {
+    return `Fehler beim Publish: ${unknownError.message}`;
+  }
+  return 'Fehler beim Publish: unbekannter Fehler';
 }

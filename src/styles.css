@@ -135,6 +135,12 @@ body {
   padding: 1rem 1.25rem;
 }
 
+.app-panel-controls {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
 .overview-layout {
   display: flex;
   flex-direction: row;
@@ -228,6 +234,247 @@ body {
   white-space: nowrap;
 }
 
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 0.45rem;
+  padding-top: 0.25rem;
+}
+
+.control-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 4.4rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-muted-bg);
+  color: #495057;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+}
+
+.control-card:hover {
+  border-color: #9ca3af;
+  background: #f1f5f9;
+}
+
+.control-card:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.control-card:active {
+  background: #e2e8f0;
+}
+
+.control-card-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.control-card-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.control-card-icon > svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.control-card-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.control-card-topic {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.control-card-value {
+  display: block;
+  font-size: 0.9rem;
+  color: #374151;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.control-card-switch {
+  position: relative;
+  width: 2.6rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.control-card-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.control-card-slider {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: #cbd5e1;
+  border: 1px solid #94a3b8;
+  transition: background-color 120ms ease;
+}
+
+.control-card-switch:hover .control-card-slider {
+  background: #b6c7de;
+  border-color: #64748b;
+}
+
+.control-card-switch:hover .control-card-slider::after {
+  border-color: #64748b;
+}
+
+.control-card-slider::after {
+  content: '';
+  position: absolute;
+  top: 0.14rem;
+  left: 0.14rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  transition: transform 120ms ease;
+}
+
+.control-card-switch input:checked + .control-card-slider {
+  background: #60a5fa;
+  border-color: #2563eb;
+}
+
+.control-card-switch input:checked + .control-card-slider::after {
+  transform: translateX(1.07rem);
+}
+
+.control-card-switch input:disabled + .control-card-slider {
+  opacity: 0.55;
+}
+
+.control-card-switch input:disabled ~ .control-card-slider,
+.control-card-switch input:disabled + .control-card-slider {
+  cursor: not-allowed;
+}
+
+.control-card-switch:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.control-card-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid #bfdbfe;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: spin 650ms linear infinite;
+}
+
+.overview-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.overview-status p {
+  margin: 0;
+}
+
+.detail-page {
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.detail-page-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.detail-page-header h2 {
+  margin: 0;
+  color: var(--ui-title);
+}
+
+.detail-page-back {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-muted-bg);
+  color: #374151;
+  min-height: 2rem;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+
+.detail-page-back:hover {
+  border-color: #9ca3af;
+  background: #f1f5f9;
+}
+
+.detail-page-back:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.detail-page-empty {
+  min-height: 18rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 1rem;
+}
+
+.detail-page-empty p {
+  margin: 0;
+  color: #475569;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .app-panel h2 {
   margin-top: 0;
 }
@@ -249,6 +496,15 @@ body {
 
   .overview-layout {
     flex-direction: column;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .control-card-topic,
+  .control-card-value {
+    max-width: 100%;
   }
 
   .breadcrumb-label {
