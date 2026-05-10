@@ -96,17 +96,23 @@ function updateAtPath(node: MessageTreeNode, topicChunks: string[], depth: numbe
  * @returns {MessageTreeNode} Updated node.
  */
 function applyMessageToNode(node: MessageTreeNode, message: MessageTopicData): MessageTreeNode {
-  const updatedNode: MessageTreeNode = {
-    ...node,
+  const updatedNodeBase: MessageTreeNode = {
+    childs: node.childs,
     topic: message.topic,
-    value: message.value,
-    time: message.time,
-    reason: message.reason,
+  };
+
+  const updatedNode: MessageTreeNode = {
+    ...updatedNodeBase,
+    ...(message.value !== undefined ? { value: message.value } : {}),
+    ...(message.time !== undefined ? { time: message.time } : {}),
+    ...(message.reason !== undefined ? { reason: message.reason } : {}),
   };
 
   // Legacy behavior: if history is missing in the new payload, keep old history.
-  if (message.history) {
+  if (message.history !== undefined) {
     updatedNode.history = message.history;
+  } else if (node.history !== undefined) {
+    updatedNode.history = node.history;
   }
 
   return updatedNode;
