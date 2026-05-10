@@ -1,5 +1,6 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import type { TopicControlItem } from '../domain/messages/controlElementDecisions';
+import { getSnackbarDurationMs, type SnackbarSeverity } from '../config/notificationConfigService';
 import { DetailViewPage } from '../features/detailview/components/DetailViewPage';
 import { LeftTopicNavigation } from '../features/message-path/components/LeftTopicNavigation';
 import { MessagePathBreadcrumb } from '../features/message-path/components/MessagePathBreadcrumb';
@@ -11,6 +12,12 @@ type AppViewMode = 'overview' | 'detail';
 interface AppViewState {
   mode: AppViewMode;
   detailTopic: string;
+}
+
+interface SnackbarState {
+  id: number;
+  message: string;
+  severity: SnackbarSeverity;
 }
 
 /**
@@ -31,6 +38,44 @@ export default function App(): JSX.Element {
     publishControlValue,
   } = useMessagePathController();
   const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
+  const [snackbarState, setSnackbarState] = useState<SnackbarState | null>(null);
+  const snackbarTimeoutRef = useRef<number | null>(null);
+
+  useEffect((): (() => void) => {
+    return (): void => {
+      if (snackbarTimeoutRef.current !== null) {
+        window.clearTimeout(snackbarTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect((): void => {
+    const snackbarContent = mapSnackbarContentFromError(error);
+    if (!snackbarContent) {
+      return;
+    }
+
+    const nextId = Date.now();
+    setSnackbarState({
+      id: nextId,
+      message: snackbarContent.message,
+      severity: snackbarContent.severity,
+    });
+
+    if (snackbarTimeoutRef.current !== null) {
+      window.clearTimeout(snackbarTimeoutRef.current);
+    }
+
+    snackbarTimeoutRef.current = window.setTimeout((): void => {
+      setSnackbarState((currentSnackbar: SnackbarState | null): SnackbarState | null => {
+        if (currentSnackbar?.id !== nextId) {
+          return currentSnackbar;
+        }
+        return null;
+      });
+      snackbarTimeoutRef.current = null;
+    }, getSnackbarDurationMs(snackbarContent.severity));
+  }, [error]);
 
   useEffect((): (() => void) => {
     /**
@@ -63,6 +108,19 @@ export default function App(): JSX.Element {
     setViewState({ mode: 'overview', detailTopic: '' });
   }
 
+  /**
+   * Closes the currently visible snackbar.
+   */
+  function closeSnackbar(): void {
+    if (snackbarTimeoutRef.current !== null) {
+      window.clearTimeout(snackbarTimeoutRef.current);
+      snackbarTimeoutRef.current = null;
+    }
+    setSnackbarState(null);
+  }
+
+  const localizedLastRefreshTime = formatLocalizedTime(lastRefreshIso);
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -82,21 +140,119 @@ export default function App(): JSX.Element {
               }}
             />
             <div className="overview-status">
+                {isLoading ? <span className="overview-status-loader" aria-label="Daten werden geladen" /> : null}
               <p>
-                Laden: <strong>{isLoading ? 'aktiv' : 'bereit'}</strong>
-              </p>
-              <p>
-                Letzte Aktualisierung: <strong>{lastRefreshIso ?? 'noch keine'}</strong>
+                  Letzte Aktualisierung: <strong>{localizedLastRefreshTime}</strong>
               </p>
             </div>
-            {error ? <p className="error-text">{error}</p> : null}
+            {error && !isPublishErrorMessage(error) ? <p className="error-text">{error}</p> : null}
           </div>
         </section>
       ) : (
         <DetailViewPage topic={viewState.detailTopic} onBackToOverview={openOverviewPage} />
       )}
+
+      {snackbarState ? (
+        <div
+          className={`snackbar snackbar-${snackbarState.severity}`}
+          role={getSnackbarRole(snackbarState.severity)}
+          aria-live={getSnackbarAriaLive(snackbarState.severity)}
+          aria-atomic="true"
+        >
+          <p className="snackbar-message">{snackbarState.message}</p>
+          <button className="snackbar-close" type="button" onClick={closeSnackbar} aria-label="Schliessen">
+            X
+          </button>
+        </div>
+      ) : null}
     </main>
   );
+}
+
+/**
+ * Determines whether a UI error message represents a publish failure.
+ * @param errorMessage Potential UI error message.
+ * @returns {boolean} True when the message belongs to the publish path.
+ */
+function isPublishErrorMessage(errorMessage: string | null): errorMessage is string {
+  return typeof errorMessage === 'string' && errorMessage.startsWith('Fehler beim Publish:');
+}
+
+interface SnackbarContent {
+  severity: SnackbarSeverity;
+  message: string;
+}
+
+/**
+ * Maps controller error state to snackbar payload when needed.
+ * @param errorMessage Controller error state.
+ * @returns {SnackbarContent | null} Snackbar payload or null when no snackbar should be shown.
+ */
+function mapSnackbarContentFromError(errorMessage: string | null): SnackbarContent | null {
+  if (!isPublishErrorMessage(errorMessage)) {
+    return null;
+  }
+
+  return {
+    severity: 'warning',
+    message: normalizePublishWarningMessage(errorMessage),
+  };
+}
+
+/**
+ * Converts publish error text into warning text without severity label.
+ * @param publishErrorMessage Raw publish error text.
+ * @returns {string} User-facing warning text.
+ */
+function normalizePublishWarningMessage(publishErrorMessage: string): string {
+  const prefix = 'Fehler beim Publish:';
+  if (publishErrorMessage.startsWith(prefix)) {
+    const strippedMessage = publishErrorMessage.slice(prefix.length).trim();
+    if (strippedMessage.length > 0) {
+      return strippedMessage;
+    }
+  }
+  return publishErrorMessage;
+}
+
+/**
+ * Returns the appropriate snackbar role for a severity.
+ * @param severity Snackbar severity.
+ * @returns {'alert' | 'status'} ARIA role.
+ */
+function getSnackbarRole(severity: SnackbarSeverity): 'alert' | 'status' {
+  return severity === 'error' || severity === 'warning' ? 'alert' : 'status';
+}
+
+/**
+ * Returns ARIA live level for a snackbar severity.
+ * @param severity Snackbar severity.
+ * @returns {'assertive' | 'polite'} ARIA live value.
+ */
+function getSnackbarAriaLive(severity: SnackbarSeverity): 'assertive' | 'polite' {
+  return severity === 'error' || severity === 'warning' ? 'assertive' : 'polite';
+}
+
+/**
+ * Formats one ISO timestamp into localized time-only output.
+ * @param isoTimestamp Timestamp in ISO format.
+ * @returns {string} Localized time representation or placeholder.
+ */
+function formatLocalizedTime(isoTimestamp: string | null): string {
+  if (typeof isoTimestamp !== 'string' || isoTimestamp.length === 0) {
+    return '-';
+  }
+
+  const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(date);
 }
 
 /**
