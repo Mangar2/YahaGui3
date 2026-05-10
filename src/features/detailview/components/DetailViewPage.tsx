@@ -2,6 +2,7 @@ import { useMemo, type JSX } from 'react';
 import { splitTopic } from '../../../domain/messages/topicPath';
 import { useDetailTopicController } from '../hooks/useDetailTopicController';
 import { DetailValueTable } from './DetailValueTable';
+import { DetailLineChart } from './DetailLineChart';
 
 interface DetailViewPageProps {
   topic: string;
@@ -54,8 +55,7 @@ export function DetailViewPage(props: DetailViewPageProps): JSX.Element {
             </section>
 
             <section className="detail-chart-panel" aria-label="Line chart panel">
-              <h3>Line Chart</h3>
-              <p>Layout analog zum Original vorbereitet.</p>
+              <DetailLineChart activeNode={activeNode} />
             </section>
           </div>
 
