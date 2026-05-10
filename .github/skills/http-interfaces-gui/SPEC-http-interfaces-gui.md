@@ -115,7 +115,7 @@ Query current and historical topic state data from the message tree.
 - `/store`
 
 ### 4.3 Data Node Schema
-Each response node has this shape:
+Each response node has this base shape:
 
 ```json
 {
@@ -140,6 +140,9 @@ Each response node has this shape:
 Notes:
 - `time` fields are ISO-8601 UTC with trailing `Z`.
 - `history` is newest first.
+- `time`, `reason`, and `history` are optional response fields and only included when explicitly requested.
+- If `time`, `reason`, or `history` is not requested, the field is omitted entirely.
+- Specifically for `reason` and `history`: there is no placeholder empty array when not requested.
 
 ### 4.4 GET /store/<topicPrefix>
 Section query mode.
@@ -149,6 +152,7 @@ Request:
 - Path: `/store` or `/store/<topicPrefix>`
 - Optional headers:
   - `levelamount` (integer, default `1`)
+  - `time` (bool-like, default `false`)
   - `history` (bool-like, default `false`)
   - `reason` (bool-like, default `true`)
 
@@ -174,6 +178,7 @@ Request:
 
 Supported body fields:
 - `topic` string, optional, topic prefix for query
+- `time` bool or string bool token
 - `history` bool or string bool token
 - `reason` bool or string bool token
 - `levelAmount` integer or integer string
@@ -185,8 +190,9 @@ Body example:
 ```json
 {
   "topic": "first/bathroom/main/light/light on time",
-  "history": true,
-  "reason": true,
+  "time": false,
+  "history": false,
+  "reason": false,
   "levelAmount": 7,
   "nodes": []
 }
@@ -207,14 +213,17 @@ Response for parsed direct POST body:
   "payload": [
     {
       "topic": "...",
-      "value": "...",
-      "time": "...",
-      "reason": [],
-      "history": []
+      "value": "..."
     }
   ]
 }
 ```
+
+Response field inclusion rule:
+- Requested `time=true` adds `time` to each returned node.
+- Requested `reason=true` adds `reason` to each returned node.
+- Requested `history=true` adds `history` to each returned node.
+- Non-requested fields are not returned at all (no empty arrays for `reason` or `history`).
 
 Response for non-parsed POST body fallback:
 - `200`
@@ -227,7 +236,7 @@ For GUI clients, `POST /store` is the preferred interface after initial load.
 Why `POST` is preferred:
 - It supports sending client snapshot state in `nodes`, so server can return only differences.
 - It reduces network payload and client-side processing for frequent updates.
-- It keeps query parameters (`topic`, `history`, `reason`, `levelAmount`, `nodes`) in one explicit JSON contract.
+- It keeps query parameters (`topic`, `time`, `history`, `reason`, `levelAmount`, `nodes`) in one explicit JSON contract.
 
 When `GET` is still useful:
 - Initial full load when no client snapshot exists yet.
@@ -238,6 +247,10 @@ Recommended GUI strategy:
 - Step 1: perform initial read with `GET /store/<topicPrefix>`.
 - Step 2: continue with `POST /store` and `nodes` snapshot diff requests.
 - Step 3: if client state becomes inconsistent or POST fails repeatedly, perform one full reload via GET, then resume POST diff mode.
+
+Menu/default query optimization:
+- For normal menu and navigation use cases, explicitly request `time: false` to reduce payload size.
+- If no UI element needs history/reason metadata, also request `history: false` and `reason: false`.
 
 ## 5. HttpMqttInterface Publish API
 
@@ -342,8 +355,9 @@ async function queryMessageStore(baseUrl, topic) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       topic,
-      history: true,
-      reason: true,
+      time: false,
+      history: false,
+      reason: false,
       levelAmount: 5,
       nodes: []
     })

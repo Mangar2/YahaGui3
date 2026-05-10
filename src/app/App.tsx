@@ -38,14 +38,15 @@ export default function App(): JSX.Element {
     publishControlValue,
   } = useMessagePathController();
   const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
-  const [snackbarState, setSnackbarState] = useState<SnackbarState | null>(null);
-  const snackbarTimeoutRef = useRef<number | null>(null);
+  const [snackbarStack, setSnackbarStack] = useState<SnackbarState[]>([]);
+  const snackbarTimeoutsRef = useRef<Map<number, number>>(new Map<number, number>());
 
   useEffect((): (() => void) => {
     return (): void => {
-      if (snackbarTimeoutRef.current !== null) {
-        window.clearTimeout(snackbarTimeoutRef.current);
+      for (const timeoutId of snackbarTimeoutsRef.current.values()) {
+        window.clearTimeout(timeoutId);
       }
+      snackbarTimeoutsRef.current.clear();
     };
   }, []);
 
@@ -56,25 +57,23 @@ export default function App(): JSX.Element {
     }
 
     const nextId = Date.now();
-    setSnackbarState({
-      id: nextId,
-      message: snackbarContent.message,
-      severity: snackbarContent.severity,
-    });
+    setSnackbarStack((currentStack: SnackbarState[]): SnackbarState[] => [
+      ...currentStack,
+      {
+        id: nextId,
+        message: snackbarContent.message,
+        severity: snackbarContent.severity,
+      },
+    ]);
 
-    if (snackbarTimeoutRef.current !== null) {
-      window.clearTimeout(snackbarTimeoutRef.current);
-    }
-
-    snackbarTimeoutRef.current = window.setTimeout((): void => {
-      setSnackbarState((currentSnackbar: SnackbarState | null): SnackbarState | null => {
-        if (currentSnackbar?.id !== nextId) {
-          return currentSnackbar;
-        }
-        return null;
+    const timeoutId = window.setTimeout((): void => {
+      setSnackbarStack((currentStack: SnackbarState[]): SnackbarState[] => {
+        return currentStack.filter((entry: SnackbarState): boolean => entry.id !== nextId);
       });
-      snackbarTimeoutRef.current = null;
+      snackbarTimeoutsRef.current.delete(nextId);
     }, getSnackbarDurationMs(snackbarContent.severity));
+
+    snackbarTimeoutsRef.current.set(nextId, timeoutId);
   }, [error]);
 
   useEffect((): (() => void) => {
@@ -108,15 +107,32 @@ export default function App(): JSX.Element {
     setViewState({ mode: 'overview', detailTopic: '' });
   }
 
+  const topSnackbar = snackbarStack.at(-1) ?? null;
+
+  /**
+   * Removes one snackbar by id and clears its timeout.
+   * @param snackbarId Identifier of the snackbar to remove.
+   */
+  function removeSnackbar(snackbarId: number): void {
+    const timeoutId = snackbarTimeoutsRef.current.get(snackbarId);
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+      snackbarTimeoutsRef.current.delete(snackbarId);
+    }
+
+    setSnackbarStack((currentStack: SnackbarState[]): SnackbarState[] => {
+      return currentStack.filter((entry: SnackbarState): boolean => entry.id !== snackbarId);
+    });
+  }
+
   /**
    * Closes the currently visible snackbar.
    */
   function closeSnackbar(): void {
-    if (snackbarTimeoutRef.current !== null) {
-      window.clearTimeout(snackbarTimeoutRef.current);
-      snackbarTimeoutRef.current = null;
+    if (!topSnackbar) {
+      return;
     }
-    setSnackbarState(null);
+    removeSnackbar(topSnackbar.id);
   }
 
   const localizedLastRefreshTime = formatLocalizedTime(lastRefreshIso);
@@ -140,9 +156,9 @@ export default function App(): JSX.Element {
               }}
             />
             <div className="overview-status">
-                {isLoading ? <span className="overview-status-loader" aria-label="Daten werden geladen" /> : null}
+              {isLoading ? <span className="overview-status-loader" aria-label="Daten werden geladen" /> : null}
               <p>
-                  Letzte Aktualisierung: <strong>{localizedLastRefreshTime}</strong>
+                Letzte Aktualisierung: <strong>{localizedLastRefreshTime}</strong>
               </p>
             </div>
             {error && !isPublishErrorMessage(error) ? <p className="error-text">{error}</p> : null}
@@ -152,14 +168,14 @@ export default function App(): JSX.Element {
         <DetailViewPage topic={viewState.detailTopic} onBackToOverview={openOverviewPage} />
       )}
 
-      {snackbarState ? (
+      {topSnackbar ? (
         <div
-          className={`snackbar snackbar-${snackbarState.severity}`}
-          role={getSnackbarRole(snackbarState.severity)}
-          aria-live={getSnackbarAriaLive(snackbarState.severity)}
+          className={`snackbar snackbar-${topSnackbar.severity}`}
+          role={getSnackbarRole(topSnackbar.severity)}
+          aria-live={getSnackbarAriaLive(topSnackbar.severity)}
           aria-atomic="true"
         >
-          <p className="snackbar-message">{snackbarState.message}</p>
+          <p className="snackbar-message">{topSnackbar.message}</p>
           <button className="snackbar-close" type="button" onClick={closeSnackbar} aria-label="Schliessen">
             X
           </button>
