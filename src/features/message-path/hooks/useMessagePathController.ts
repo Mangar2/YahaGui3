@@ -20,10 +20,12 @@ export interface MessagePathControllerState {
 const OVERVIEW_LEVEL_AMOUNT = 7;
 const OVERVIEW_REFRESH_INTERVAL_MS = 2000;
 const MAX_POST_FAILURES_BEFORE_FULL_RESYNC = 2;
+const OVERVIEW_INCLUDE_HISTORY = false;
+const OVERVIEW_INCLUDE_REASON = false;
 
 /**
  * Controls loading and refreshing the currently active message path.
- * @returns Reactive state for breadcrumb path and topic loading.
+ * @returns {MessagePathControllerState} Reactive state for breadcrumb path and topic loading.
  */
 export function useMessagePathController(): MessagePathControllerState {
   const [topic, setTopic] = useTopicQueryState();
@@ -64,6 +66,10 @@ export function useMessagePathController(): MessagePathControllerState {
   useEffect((): void => {
     let cancelled = false;
 
+    /**
+     * Loads the current overview section once after topic change.
+     * @returns {Promise<void>}
+     */
     async function runInitialLoad(): Promise<void> {
       setIsLoading(true);
       try {
@@ -104,13 +110,14 @@ export function useMessagePathController(): MessagePathControllerState {
         refreshRunningRef.current = true;
         try {
           const currentTopicChunks = topicChunksRef.current;
-          const snapshotNodes = buildTopicSnapshotNodes(getNodeByTopicChunks(messageTreeRef.current, currentTopicChunks));
+          const currentNode = getNodeByTopicChunks(messageTreeRef.current, currentTopicChunks);
+          const requestNodes = determineRequestNodes(currentNode, OVERVIEW_INCLUDE_HISTORY, OVERVIEW_INCLUDE_REASON);
           const request: MessageStoreDirectRequest = {
             topic: joinTopic(currentTopicChunks),
-            history: false,
-            reason: false,
+            history: OVERVIEW_INCLUDE_HISTORY,
+            reason: OVERVIEW_INCLUDE_REASON,
             levelAmount: OVERVIEW_LEVEL_AMOUNT,
-            nodes: snapshotNodes,
+            nodes: requestNodes,
           };
 
           const payload = await refreshOverviewSection(
@@ -184,7 +191,7 @@ export function useMessagePathController(): MessagePathControllerState {
  * Builds side navigation items from current topic and active node children.
  * @param topicChunks Current topic chunks.
  * @param activeNode Active tree node.
- * @returns Navigation entries for the left panel.
+ * @returns {string[]} Navigation entries for the left panel.
  */
 function buildNavItems(topicChunks: string[], activeNode: MessageTreeNode | null): string[] {
   const items: string[] = [];
@@ -209,7 +216,7 @@ function buildNavItems(topicChunks: string[], activeNode: MessageTreeNode | null
 /**
  * Builds a snapshot array for POST /store diff mode from the active subtree.
  * @param activeNode Active subtree root.
- * @returns Snapshot nodes with known topic/value/time state.
+ * @returns {MessageTopicData[]} Snapshot nodes with known topic/value/time state.
  */
 function buildTopicSnapshotNodes(activeNode: MessageTreeNode | null): MessageTopicData[] {
   if (!activeNode) {
@@ -225,14 +232,32 @@ function buildTopicSnapshotNodes(activeNode: MessageTreeNode | null): MessageTop
  * Loads overview section via legacy-equivalent GET configuration.
  * @param client Message-store client.
  * @param topicChunks Current topic chunks.
- * @returns Loaded topic payload.
+ * @returns {Promise<MessageTopicData[]>} Loaded topic payload.
  */
 async function fetchOverviewSection(client: MessageStoreClient, topicChunks: string[]): Promise<MessageTopicData[]> {
   return client.loadTopicSection(joinTopic(topicChunks), {
-    history: false,
-    reason: false,
+    history: OVERVIEW_INCLUDE_HISTORY,
+    reason: OVERVIEW_INCLUDE_REASON,
     levelAmount: OVERVIEW_LEVEL_AMOUNT,
   });
+}
+
+/**
+ * Determines POST /store nodes payload based on request detail level.
+ * @param activeNode Active subtree root.
+ * @param includeHistory Whether history data is requested.
+ * @param includeReason Whether reason data is requested.
+ * @returns {MessageTopicData[]} Node list for the request.
+ */
+function determineRequestNodes(
+  activeNode: MessageTreeNode | null,
+  includeHistory: boolean,
+  includeReason: boolean,
+): MessageTopicData[] {
+  if (!includeHistory && !includeReason) {
+    return [];
+  }
+  return buildTopicSnapshotNodes(activeNode);
 }
 
 /**
@@ -241,7 +266,7 @@ async function fetchOverviewSection(client: MessageStoreClient, topicChunks: str
  * @param request Refresh request payload.
  * @param consecutivePostFailures Consecutive POST failures so far.
  * @param topicChunks Current topic chunks.
- * @returns Payload for tree merge.
+ * @returns {Promise<MessageTopicData[]>} Payload for tree merge.
  */
 async function refreshOverviewSection(
   client: MessageStoreClient,
@@ -283,7 +308,7 @@ function collectTopicSnapshotNodes(node: MessageTreeNode, result: MessageTopicDa
 /**
  * Converts an unknown error into a UI-safe message.
  * @param unknownError Caught error value.
- * @returns Normalized message string.
+ * @returns {string} Normalized message string.
  */
 function formatLoadError(unknownError: unknown): string {
   if (unknownError instanceof MessageStoreClientError) {

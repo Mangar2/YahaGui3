@@ -5,7 +5,7 @@ import { useMessagePathController } from '../features/message-path/hooks/useMess
 
 /**
  * Main application shell for step 1 of the new GUI.
- * @returns Application root component.
+ * @returns {JSX.Element} Application root component.
  */
 export default function App(): JSX.Element {
   const { topicChunks, activeNode, navItems, isLoading, lastRefreshIso, error, navigateToDepth, selectNavItem } =
@@ -14,8 +14,6 @@ export default function App(): JSX.Element {
   return (
     <main className="app-shell">
       <header className="app-header">
-        <p className="app-kicker">yaha</p>
-        <h1>GUI fuer Heimautomatisierung</h1>
         <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={navigateToDepth} />
       </header>
 

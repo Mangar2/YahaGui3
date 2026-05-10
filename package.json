@@ -17,6 +17,8 @@
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",
     "eslint": "^10.3.0",
     "eslint-plugin-jsdoc": "^62.9.0",

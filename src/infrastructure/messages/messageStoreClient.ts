@@ -1,9 +1,9 @@
 import { encodeTopicForPath } from '../../domain/messages/topicPath';
 import type { MessageStoreDirectRequest, MessageStoreQueryOptions, MessageTopicData } from '../../domain/messages/interfaces';
 
-type MessageStorePayloadWrapper = {
+interface MessageStorePayloadWrapper {
   payload: unknown;
-};
+}
 
 /**
  * Error thrown when message-store communication fails.
@@ -44,7 +44,7 @@ export class MessageStoreClient {
    * Loads the current section for a topic path via GET /store/<topic>.
    * @param topic Topic prefix path.
    * @param options Query behavior flags.
-   * @returns Normalized payload list.
+    * @returns {Promise<MessageTopicData[]>} Normalized payload list.
    */
   public async loadTopicSection(topic: string, options: MessageStoreQueryOptions): Promise<MessageTopicData[]> {
     const endpoint = this.buildStoreEndpoint(topic);
@@ -63,7 +63,7 @@ export class MessageStoreClient {
   /**
    * Refreshes a topic path via direct POST /store.
    * @param request Direct query object for message-store.
-   * @returns Normalized payload list.
+    * @returns {Promise<MessageTopicData[]>} Normalized payload list.
    */
   public async refreshTopicSection(request: MessageStoreDirectRequest): Promise<MessageTopicData[]> {
     const endpoint = new URL('/store', this.baseUrl).toString();
@@ -81,7 +81,7 @@ export class MessageStoreClient {
   /**
    * Builds the GET endpoint for a topic path.
    * @param topic Topic path.
-   * @returns Absolute endpoint URL.
+    * @returns {string} Absolute endpoint URL.
    */
   private buildStoreEndpoint(topic: string): string {
     const encodedTopic = encodeTopicForPath(topic);
@@ -93,11 +93,15 @@ export class MessageStoreClient {
    * Reads and validates message-store payloads from GET/POST responses.
    * @param response Fetch response.
    * @param endpoint Endpoint that produced the response.
-   * @returns Normalized list of message topics.
+   * @returns {Promise<MessageTopicData[]>} Normalized list of message topics.
    */
   private async readPayloadResponse(response: Response, endpoint: string): Promise<MessageTopicData[]> {
     if (!response.ok) {
-      throw new MessageStoreClientError(`message-store request failed with status ${response.status}`, endpoint, response.status);
+      throw new MessageStoreClientError(
+        `message-store request failed with status ${String(response.status)}`,
+        endpoint,
+        response.status,
+      );
     }
 
     let rawBody: unknown;
@@ -116,7 +120,7 @@ export class MessageStoreClient {
  * @param rawBody Raw JSON body.
  * @param endpoint Endpoint that returned the body.
  * @param status HTTP status code.
- * @returns List of validated topic nodes.
+ * @returns {MessageTopicData[]} List of validated topic nodes.
  */
 function parseTopicPayload(rawBody: unknown, endpoint: string, status: number): MessageTopicData[] {
   const directPayload = parsePayloadWrapper(rawBody);
@@ -130,7 +134,7 @@ function parseTopicPayload(rawBody: unknown, endpoint: string, status: number): 
 /**
  * Detects payload wrapper objects.
  * @param rawBody Raw JSON body.
- * @returns Wrapper object or null.
+ * @returns {MessageStorePayloadWrapper | null} Wrapper object or null.
  */
 function parsePayloadWrapper(rawBody: unknown): MessageStorePayloadWrapper | null {
   if (!isRecord(rawBody)) {
@@ -147,7 +151,7 @@ function parsePayloadWrapper(rawBody: unknown): MessageStorePayloadWrapper | nul
  * @param rawPayload Unknown payload.
  * @param endpoint Endpoint context for errors.
  * @param status HTTP status code.
- * @returns Strictly validated list.
+ * @returns {MessageTopicData[]} Strictly validated list.
  */
 function parseTopicDataList(rawPayload: unknown, endpoint: string, status: number): MessageTopicData[] {
   if (!Array.isArray(rawPayload)) {
@@ -155,9 +159,21 @@ function parseTopicDataList(rawPayload: unknown, endpoint: string, status: numbe
   }
 
   const result: MessageTopicData[] = [];
+  let firstNodeError: MessageStoreClientError | null = null;
   for (const rawNode of rawPayload) {
-    result.push(parseTopicDataNode(rawNode, endpoint, status));
+    try {
+      result.push(parseTopicDataNode(rawNode, endpoint, status));
+    } catch (error: unknown) {
+      if (error instanceof MessageStoreClientError && firstNodeError === null) {
+        firstNodeError = error;
+      }
+    }
   }
+
+  if (result.length === 0 && rawPayload.length > 0 && firstNodeError !== null) {
+    throw firstNodeError;
+  }
+
   return result;
 }
 
@@ -166,7 +182,7 @@ function parseTopicDataList(rawPayload: unknown, endpoint: string, status: numbe
  * @param rawNode Unknown node data.
  * @param endpoint Endpoint context for errors.
  * @param status HTTP status code.
- * @returns Validated topic node.
+ * @returns {MessageTopicData} Validated topic node.
  */
 function parseTopicDataNode(rawNode: unknown, endpoint: string, status: number): MessageTopicData {
   if (!isRecord(rawNode)) {
@@ -206,7 +222,7 @@ function parseTopicDataNode(rawNode: unknown, endpoint: string, status: number):
  * @param rawReason Unknown reason payload.
  * @param endpoint Endpoint context for errors.
  * @param status HTTP status code.
- * @returns Valid reason array.
+ * @returns {{ timestamp: string; message: string }[]} Valid reason array.
  */
 function parseReasonList(rawReason: unknown, endpoint: string, status: number): { timestamp: string; message: string }[] {
   if (!Array.isArray(rawReason)) {
@@ -228,7 +244,7 @@ function parseReasonList(rawReason: unknown, endpoint: string, status: number): 
  * @param rawHistory Unknown history payload.
  * @param endpoint Endpoint context for errors.
  * @param status HTTP status code.
- * @returns Valid history array.
+ * @returns {{ time?: string; value?: string | number | boolean | null; reason?: { timestamp: string; message: string }[] }[]} Valid history array.
  */
 function parseHistoryList(
   rawHistory: unknown,
@@ -264,7 +280,7 @@ function parseHistoryList(
 /**
  * Checks whether a value is a plain record.
  * @param value Candidate value.
- * @returns True when value is object-like.
+ * @returns {value is Record<string, unknown>} True when value is object-like.
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -273,7 +289,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Checks whether a value can be represented as message value.
  * @param value Candidate message value.
- * @returns True when value is supported.
+ * @returns {value is string | number | boolean | null} True when value is supported.
  */
 function isMessageScalar(value: unknown): value is string | number | boolean | null {
   return value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';

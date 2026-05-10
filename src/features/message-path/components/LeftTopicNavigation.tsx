@@ -8,7 +8,7 @@ interface LeftTopicNavigationProps {
 /**
  * Renders the left-side navigation list based on the active message node.
  * @param props Component props.
- * @returns Left navigation panel.
+ * @returns {JSX.Element} Left navigation panel.
  */
 export function LeftTopicNavigation(props: LeftTopicNavigationProps): JSX.Element {
   const { navItems, onSelectNavItem } = props;
@@ -18,14 +18,26 @@ export function LeftTopicNavigation(props: LeftTopicNavigationProps): JSX.Elemen
       <ul className="left-nav-list">
         {navItems.map((navItem: string, index: number): JSX.Element => {
           const isActive = index === 0;
+          const isBackAction = navItem === '<';
           return (
-            <li key={`${navItem}-${index}`} className="left-nav-item">
+            <li key={`${navItem}-${String(index)}`} className="left-nav-item">
               <button
-                className={isActive ? 'left-nav-button left-nav-button-active' : 'left-nav-button'}
+                className={[
+                  'left-nav-button',
+                  isActive ? 'left-nav-button-active' : '',
+                  isBackAction ? 'left-nav-button-back' : '',
+                ]
+                  .filter((value: string): boolean => value.length > 0)
+                  .join(' ')}
                 type="button"
-                onClick={(): void => onSelectNavItem(navItem)}
+                onClick={(): void => {
+                  onSelectNavItem(navItem);
+                }}
+                aria-current={isActive ? 'page' : undefined}
               >
-                {navItem}
+                <span className="left-nav-label" title={navItem}>
+                  {navItem}
+                </span>
               </button>
             </li>
           );

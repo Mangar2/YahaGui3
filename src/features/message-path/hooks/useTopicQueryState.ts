@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Reads the current topic query parameter from the browser URL.
- * @returns Topic path or empty string.
+ * @returns {string} Topic path or empty string.
  */
 function readTopicFromLocation(): string {
   const searchParams = new URLSearchParams(window.location.search);
@@ -26,7 +26,7 @@ function writeTopicToLocation(topic: string): void {
 
 /**
  * Exposes the current topic query parameter as React state.
- * @returns Topic value and setter.
+ * @returns {readonly [string, (topic: string) => void]} Topic value and setter.
  */
 export function useTopicQueryState(): readonly [string, (topic: string) => void] {
   const [topic, setTopic] = useState<string>(readTopicFromLocation());
@@ -37,6 +37,10 @@ export function useTopicQueryState(): readonly [string, (topic: string) => void]
   }, []);
 
   useEffect((): (() => void) => {
+    /**
+     * Updates local topic state when browser history changes.
+     * @returns {void}
+     */
     function handlePopState(): void {
       setTopic(readTopicFromLocation());
     }

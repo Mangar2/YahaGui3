@@ -3,7 +3,7 @@ import { splitTopic } from './topicPath';
 
 /**
  * Creates a new empty message tree root node.
- * @returns Empty message tree.
+ * @returns {MessageTreeNode} Empty message tree.
  */
 export function createEmptyMessageTree(): MessageTreeNode {
   return { childs: null };
@@ -13,7 +13,7 @@ export function createEmptyMessageTree(): MessageTreeNode {
  * Returns a node by topic chunks.
  * @param tree Message tree root node.
  * @param topicChunks Topic chunks for lookup.
- * @returns Matching node or null.
+ * @returns {MessageTreeNode | null} Matching node or null.
  */
 export function getNodeByTopicChunks(tree: MessageTreeNode, topicChunks: string[]): MessageTreeNode | null {
   let node: MessageTreeNode | null = tree;
@@ -21,11 +21,11 @@ export function getNodeByTopicChunks(tree: MessageTreeNode, topicChunks: string[
     if (!node.childs) {
       return null;
     }
-    const child = node.childs[topicChunk];
-    if (!child) {
+    const childCandidate: MessageTreeNode | undefined = node.childs[topicChunk];
+    if (typeof childCandidate === 'undefined') {
       return null;
     }
-    node = child;
+    node = childCandidate;
   }
   return node;
 }
@@ -34,7 +34,7 @@ export function getNodeByTopicChunks(tree: MessageTreeNode, topicChunks: string[
  * Replaces many nodes in immutable fashion.
  * @param tree Current tree root.
  * @param payload Topic data payload from backend.
- * @returns Updated tree root.
+ * @returns {MessageTreeNode} Updated tree root.
  */
 export function replaceManyNodes(tree: MessageTreeNode, payload: MessageTopicData[]): MessageTreeNode {
   let nextTree = tree;
@@ -48,7 +48,7 @@ export function replaceManyNodes(tree: MessageTreeNode, payload: MessageTopicDat
  * Replaces one topic node and keeps all unrelated branches untouched.
  * @param tree Current tree root.
  * @param message Message topic payload.
- * @returns Updated tree root.
+ * @returns {MessageTreeNode} Updated tree root.
  */
 function replaceSingleNode(tree: MessageTreeNode, message: MessageTopicData): MessageTreeNode {
   const topicChunks = splitTopic(message.topic);
@@ -65,7 +65,7 @@ function replaceSingleNode(tree: MessageTreeNode, message: MessageTopicData): Me
  * @param topicChunks Full topic path chunks.
  * @param depth Current recursion depth.
  * @param message Message payload to apply.
- * @returns Updated node.
+ * @returns {MessageTreeNode} Updated node.
  */
 function updateAtPath(node: MessageTreeNode, topicChunks: string[], depth: number, message: MessageTopicData): MessageTreeNode {
   if (depth >= topicChunks.length) {
@@ -73,6 +73,9 @@ function updateAtPath(node: MessageTreeNode, topicChunks: string[], depth: numbe
   }
 
   const topicChunk = topicChunks[depth];
+  if (typeof topicChunk !== 'string') {
+    return applyMessageToNode(node, message);
+  }
   const currentChilds = node.childs ?? {};
   const currentChild = currentChilds[topicChunk] ?? createEmptyMessageTree();
   const updatedChild = updateAtPath(currentChild, topicChunks, depth + 1, message);
@@ -90,7 +93,7 @@ function updateAtPath(node: MessageTreeNode, topicChunks: string[], depth: numbe
  * Applies topic payload values to one node while preserving history behavior from legacy implementation.
  * @param node Existing node.
  * @param message Message payload.
- * @returns Updated node.
+ * @returns {MessageTreeNode} Updated node.
  */
 function applyMessageToNode(node: MessageTreeNode, message: MessageTopicData): MessageTreeNode {
   const updatedNode: MessageTreeNode = {
