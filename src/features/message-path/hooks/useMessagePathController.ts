@@ -1,6 +1,5 @@
-import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageTree } from '../../../domain/messages/messageTree';
+import { createEmptyMessageTree, getNodeByTopicChunks, replaceManyNodes } from '../../../domain/messages/messageTree';
 import type { MessageStoreDirectRequest, MessageTreeNode, MessageTopicData } from '../../../domain/messages/interfaces';
 import { joinTopic, splitTopic } from '../../../domain/messages/topicPath';
 import { MessageStoreClient, MessageStoreClientError } from '../../../infrastructure/messages/messageStoreClient';
@@ -18,8 +17,9 @@ export interface MessagePathControllerState {
   selectNavItem: (navItem: string) => void;
 }
 
-const LEVEL_AMOUNT = 7;
-const REFRESH_INTERVAL_MS = 2500;
+const OVERVIEW_LEVEL_AMOUNT = 7;
+const OVERVIEW_REFRESH_INTERVAL_MS = 2000;
+const MAX_POST_FAILURES_BEFORE_FULL_RESYNC = 2;
 
 /**
  * Controls loading and refreshing the currently active message path.
@@ -29,22 +29,37 @@ export function useMessagePathController(): MessagePathControllerState {
   const [topic, setTopic] = useTopicQueryState();
   const topicChunks = useMemo((): string[] => splitTopic(topic), [topic]);
 
-  const treeRef = useRef<MessageTree>(new MessageTree());
   const clientRef = useRef<MessageStoreClient>(new MessageStoreClient(getMessageStoreBaseUrl()));
   const refreshRunningRef = useRef<boolean>(false);
+  const topicChunksRef = useRef<string[]>(topicChunks);
+  const messageTreeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
+  const consecutivePostFailuresRef = useRef<number>(0);
 
-  const [version, setVersion] = useState<number>(0);
+  const [messageTree, setMessageTree] = useState<MessageTreeNode>(createEmptyMessageTree());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshIso, setLastRefreshIso] = useState<string | null>(null);
+  const [consecutivePostFailures, setConsecutivePostFailures] = useState<number>(0);
 
   const activeNode = useMemo((): MessageTreeNode | null => {
-    return treeRef.current.getNodeByTopicChunks(topicChunks);
-  }, [topicChunks, version]);
+    return getNodeByTopicChunks(messageTree, topicChunks);
+  }, [messageTree, topicChunks]);
 
   const navItems = useMemo((): string[] => {
     return buildNavItems(topicChunks, activeNode);
   }, [topicChunks, activeNode]);
+
+  useEffect((): void => {
+    topicChunksRef.current = topicChunks;
+  }, [topicChunks]);
+
+  useEffect((): void => {
+    messageTreeRef.current = messageTree;
+  }, [messageTree]);
+
+  useEffect((): void => {
+    consecutivePostFailuresRef.current = consecutivePostFailures;
+  }, [consecutivePostFailures]);
 
   useEffect((): void => {
     let cancelled = false;
@@ -52,16 +67,13 @@ export function useMessagePathController(): MessagePathControllerState {
     async function runInitialLoad(): Promise<void> {
       setIsLoading(true);
       try {
-        const payload = await clientRef.current.loadTopicSection(joinTopic(topicChunks), {
-          history: false,
-          reason: false,
-          levelAmount: LEVEL_AMOUNT,
-        });
+        const payload = await fetchOverviewSection(clientRef.current, topicChunks);
         if (cancelled) {
           return;
         }
-        applyPayload(treeRef.current, payload, setVersion);
+        setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
         setLastRefreshIso(new Date().toISOString());
+        setConsecutivePostFailures(0);
         setError(null);
       } catch (unknownError: unknown) {
         if (cancelled) {
@@ -91,30 +103,39 @@ export function useMessagePathController(): MessagePathControllerState {
       void (async (): Promise<void> => {
         refreshRunningRef.current = true;
         try {
+          const currentTopicChunks = topicChunksRef.current;
+          const snapshotNodes = buildTopicSnapshotNodes(getNodeByTopicChunks(messageTreeRef.current, currentTopicChunks));
           const request: MessageStoreDirectRequest = {
-            topic: joinTopic(topicChunks),
+            topic: joinTopic(currentTopicChunks),
             history: false,
             reason: false,
-            levelAmount: LEVEL_AMOUNT,
-            nodes: [],
+            levelAmount: OVERVIEW_LEVEL_AMOUNT,
+            nodes: snapshotNodes,
           };
 
-          const payload = await clientRef.current.refreshTopicSection(request);
-          applyPayload(treeRef.current, payload, setVersion);
+          const payload = await refreshOverviewSection(
+            clientRef.current,
+            request,
+            consecutivePostFailuresRef.current,
+            currentTopicChunks,
+          );
+          setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
           setLastRefreshIso(new Date().toISOString());
+          setConsecutivePostFailures(0);
           setError(null);
         } catch (unknownError: unknown) {
+          setConsecutivePostFailures((previousFailures: number): number => previousFailures + 1);
           setError(formatLoadError(unknownError));
         } finally {
           refreshRunningRef.current = false;
         }
       })();
-    }, REFRESH_INTERVAL_MS);
+    }, OVERVIEW_REFRESH_INTERVAL_MS);
 
     return (): void => {
       window.clearInterval(intervalId);
     };
-  }, [topicChunks]);
+  }, []);
 
   /**
    * Navigates to a breadcrumb depth, equivalent to legacy header behavior.
@@ -186,18 +207,77 @@ function buildNavItems(topicChunks: string[], activeNode: MessageTreeNode | null
 }
 
 /**
- * Applies a payload to the tree and triggers one rerender tick.
- * @param tree Tree instance.
- * @param payload Parsed payload list.
- * @param setVersion React state setter for rerendering.
+ * Builds a snapshot array for POST /store diff mode from the active subtree.
+ * @param activeNode Active subtree root.
+ * @returns Snapshot nodes with known topic/value/time state.
  */
-function applyPayload(
-  tree: MessageTree,
-  payload: MessageTopicData[],
-  setVersion: Dispatch<SetStateAction<number>>,
-): void {
-  tree.replaceManyNodes(payload);
-  setVersion((value: number): number => value + 1);
+function buildTopicSnapshotNodes(activeNode: MessageTreeNode | null): MessageTopicData[] {
+  if (!activeNode) {
+    return [];
+  }
+
+  const result: MessageTopicData[] = [];
+  collectTopicSnapshotNodes(activeNode, result);
+  return result;
+}
+
+/**
+ * Loads overview section via legacy-equivalent GET configuration.
+ * @param client Message-store client.
+ * @param topicChunks Current topic chunks.
+ * @returns Loaded topic payload.
+ */
+async function fetchOverviewSection(client: MessageStoreClient, topicChunks: string[]): Promise<MessageTopicData[]> {
+  return client.loadTopicSection(joinTopic(topicChunks), {
+    history: false,
+    reason: false,
+    levelAmount: OVERVIEW_LEVEL_AMOUNT,
+  });
+}
+
+/**
+ * Refreshes overview section via POST diff mode and falls back to full GET resync when needed.
+ * @param client Message-store client.
+ * @param request Refresh request payload.
+ * @param consecutivePostFailures Consecutive POST failures so far.
+ * @param topicChunks Current topic chunks.
+ * @returns Payload for tree merge.
+ */
+async function refreshOverviewSection(
+  client: MessageStoreClient,
+  request: MessageStoreDirectRequest,
+  consecutivePostFailures: number,
+  topicChunks: string[],
+): Promise<MessageTopicData[]> {
+  if (consecutivePostFailures >= MAX_POST_FAILURES_BEFORE_FULL_RESYNC) {
+    return fetchOverviewSection(client, topicChunks);
+  }
+  return client.refreshTopicSection(request);
+}
+
+/**
+ * Recursively collects nodes with topics from the active subtree.
+ * @param node Current subtree node.
+ * @param result Accumulator for snapshot entries.
+ */
+function collectTopicSnapshotNodes(node: MessageTreeNode, result: MessageTopicData[]): void {
+  if (typeof node.topic === 'string' && node.topic.length > 0) {
+    result.push({
+      topic: node.topic,
+      value: node.value,
+      time: node.time,
+      reason: node.reason,
+      history: node.history,
+    });
+  }
+
+  if (!node.childs) {
+    return;
+  }
+
+  for (const childNode of Object.values(node.childs)) {
+    collectTopicSnapshotNodes(childNode, result);
+  }
 }
 
 /**
