@@ -6,4 +6,5 @@ export const ENVIRONMENT: YahaEnvironmentConfig = {
   publishPath: '/publish',
   publishTopicSetSuffix: '/set',
   configStorePath: '/kvstore/yaha/gui/config',
+  valuesStoreFilename: '/valueservice/values',
 };

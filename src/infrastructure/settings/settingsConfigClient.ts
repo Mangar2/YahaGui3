@@ -1,4 +1,5 @@
 import type { TopicNodeSettingsPayload, TopicSettingsPayload } from '../../domain/settings/interfaces';
+import { FileStoreJsonClient, FileStoreJsonClientError } from '../filestore/fileStoreJsonClient';
 
 /**
  * Error thrown when settings config API communication fails.
@@ -25,8 +26,8 @@ export class SettingsConfigClientError extends Error {
  * HTTP client for loading and storing GUI settings configurations.
  */
 export class SettingsConfigClient {
-  private readonly baseUrl: string;
   private readonly configStorePath: string;
+  private readonly fileStoreClient: FileStoreJsonClient;
 
   /**
    * Creates a settings config API client.
@@ -34,7 +35,7 @@ export class SettingsConfigClient {
    * @param configStorePath Relative path to settings config root.
    */
   public constructor(baseUrl: string, configStorePath: string) {
-    this.baseUrl = baseUrl;
+    this.fileStoreClient = new FileStoreJsonClient(baseUrl);
     this.configStorePath = normalizePath(configStorePath);
   }
 
@@ -44,27 +45,13 @@ export class SettingsConfigClient {
    * @returns {Promise<TopicSettingsPayload>} Validated settings payload.
    */
   public async readConfig(configType: string): Promise<TopicSettingsPayload> {
-    const endpoint = this.buildConfigEndpoint(configType);
-    const response = await fetch(endpoint, {
-      method: 'GET',
-    });
-
-    if (!response.ok) {
-      throw new SettingsConfigClientError(
-        `settings read failed with status ${String(response.status)}`,
-        endpoint,
-        response.status,
-      );
-    }
-
-    let rawBody: unknown;
     try {
-      rawBody = (await response.json()) as unknown;
-    } catch {
-      throw new SettingsConfigClientError('settings response is not valid JSON', endpoint, response.status);
+      const filename = this.buildConfigFilename(configType);
+      const rawBody = await this.fileStoreClient.readJsonFile(filename);
+      return parseTopicSettingsPayload(rawBody, filename, 200);
+    } catch (error: unknown) {
+      throw toSettingsConfigClientError(error, 'cannot read settings configuration');
     }
-
-    return parseTopicSettingsPayload(rawBody, endpoint, response.status);
   }
 
   /**
@@ -74,38 +61,45 @@ export class SettingsConfigClient {
    * @returns {Promise<void>} Resolves on success.
    */
   public async storeConfig(configType: string, payload: TopicSettingsPayload): Promise<void> {
-    const endpoint = this.buildConfigEndpoint(configType);
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (response.ok) {
-      return;
+    try {
+      const filename = this.buildConfigFilename(configType);
+      await this.fileStoreClient.storeJsonFile(filename, payload);
+    } catch (error: unknown) {
+      throw toSettingsConfigClientError(error, 'cannot store settings configuration');
     }
-
-    const responseText = await response.text();
-    const trimmedResponseText = responseText.trim();
-    const details = trimmedResponseText.length > 0 ? `: ${trimmedResponseText}` : '';
-    throw new SettingsConfigClientError(
-      `settings store failed with status ${String(response.status)}${details}`,
-      endpoint,
-      response.status,
-    );
   }
 
   /**
-   * Builds one endpoint URL for a concrete config type.
+   * Builds one file-store filename for a concrete config type.
    * @param configType Configuration type.
-   * @returns {string} Absolute endpoint URL.
+   * @returns {string} File-store filename.
    */
-  private buildConfigEndpoint(configType: string): string {
+  private buildConfigFilename(configType: string): string {
     const normalizedType = normalizeConfigType(configType);
-    return new URL(`${this.configStorePath}/${encodeURIComponent(normalizedType)}`, this.baseUrl).toString();
+    return `${this.configStorePath}/${encodeURIComponent(normalizedType)}`;
   }
+}
+
+/**
+ * Converts unknown errors into typed settings config client errors.
+ * @param error Unknown thrown value.
+ * @param fallbackMessage Fallback message used for unknown errors.
+ * @returns {SettingsConfigClientError} Typed settings error.
+ */
+function toSettingsConfigClientError(error: unknown, fallbackMessage: string): SettingsConfigClientError {
+  if (error instanceof SettingsConfigClientError) {
+    return error;
+  }
+
+  if (error instanceof FileStoreJsonClientError) {
+    return new SettingsConfigClientError(error.message, error.endpoint, error.status);
+  }
+
+  if (error instanceof Error) {
+    return new SettingsConfigClientError(error.message, 'settings-config-client', 0);
+  }
+
+  return new SettingsConfigClientError(fallbackMessage, 'settings-config-client', 0);
 }
 
 /**

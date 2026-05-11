@@ -9,6 +9,7 @@ interface YahaGuiRuntimeConfig {
   publishPath?: string;
   publishTopicSetSuffix?: string;
   configStorePath?: string;
+  valuesStoreFilename?: string;
 }
 
 /**
@@ -52,6 +53,14 @@ export function getConfigStorePath(): string {
 }
 
 /**
+ * Returns the configured values-store filename.
+ * @returns {string} File-store filename for values payload.
+ */
+export function getValuesStoreFilename(): string {
+  return getApiConfig().valuesStoreFilename;
+}
+
+/**
  * Returns the runtime base URL for message-store calls.
  * @returns {string} Absolute base URL.
  */
@@ -88,6 +97,7 @@ export function getApiConfig(): YahaEnvironmentConfig {
     publishPath: runtimeConfig.publishPath ?? ENVIRONMENT.publishPath,
     publishTopicSetSuffix: runtimeConfig.publishTopicSetSuffix ?? ENVIRONMENT.publishTopicSetSuffix,
     configStorePath: runtimeConfig.configStorePath ?? ENVIRONMENT.configStorePath,
+    valuesStoreFilename: runtimeConfig.valuesStoreFilename ?? ENVIRONMENT.valuesStoreFilename,
   };
 }
 
@@ -127,6 +137,11 @@ function getRuntimeConfig(): YahaGuiRuntimeConfig {
   const configStorePath = normalizeConfigPath(globalConfigValue.configStorePath);
   if (configStorePath) {
     runtimeConfig.configStorePath = configStorePath;
+  }
+
+  const valuesStoreFilename = normalizeConfigPath(globalConfigValue.valuesStoreFilename);
+  if (valuesStoreFilename) {
+    runtimeConfig.valuesStoreFilename = valuesStoreFilename;
   }
 
   return runtimeConfig;

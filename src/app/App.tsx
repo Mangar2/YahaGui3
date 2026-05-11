@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import type { TopicControlItem } from '../domain/messages/controlElementDecisions';
 import { getSnackbarDurationMs, type SnackbarSeverity } from '../config/notificationConfigService';
-import { getConfigStoreBaseUrl, getConfigStorePath } from '../config/runtime';
+import { getConfigStoreBaseUrl, getConfigStorePath, getValuesStoreFilename } from '../config/runtime';
 import { TopicSettingsStore } from '../domain/settings/interfaces';
 import { DetailViewPage } from '../features/detailview/components';
 import { AppHeader } from '../features/layout/components/AppHeader';
 import { LeftTopicNavigation } from '../features/message-path/components/LeftTopicNavigation';
 import { useMessagePathController } from '../features/message-path/hooks/useMessagePathController';
 import { RightTopicControls } from '../features/overview-controls/components/RightTopicControls';
-import { SettingsPage } from '../features/settings/components';
+import { SettingsPage, ValuesStorePage } from '../features/settings/components';
 import { SettingsConfigClient } from '../infrastructure/settings/settingsConfigClient';
+import { ValuesStoreClient } from '../infrastructure/values/valuesStoreClient';
 
-type AppViewMode = 'overview' | 'detail' | 'settings';
+type AppViewMode = 'overview' | 'detail' | 'settings' | 'values';
 
 interface AppViewState {
   mode: AppViewMode;
@@ -32,6 +33,9 @@ export default function App(): JSX.Element {
   const settingsStoreRef = useRef<TopicSettingsStore>(new TopicSettingsStore());
   const settingsClientRef = useRef<SettingsConfigClient>(
     new SettingsConfigClient(getConfigStoreBaseUrl(), getConfigStorePath()),
+  );
+  const valuesClientRef = useRef<ValuesStoreClient>(
+    new ValuesStoreClient(getConfigStoreBaseUrl(), getValuesStoreFilename()),
   );
 
   const {
@@ -65,6 +69,14 @@ export default function App(): JSX.Element {
       return;
     }
 
+    enqueueSnackbar(snackbarContent);
+  }, [error]);
+
+  /**
+   * Shows one snackbar entry and schedules automatic removal.
+   * @param snackbarContent Snackbar payload.
+   */
+  function enqueueSnackbar(snackbarContent: SnackbarContent): void {
     const nextId = Date.now();
     setSnackbarStack((currentStack: SnackbarState[]): SnackbarState[] => [
       ...currentStack,
@@ -83,7 +95,7 @@ export default function App(): JSX.Element {
     }, getSnackbarDurationMs(snackbarContent.severity));
 
     snackbarTimeoutsRef.current.set(nextId, timeoutId);
-  }, [error]);
+  }
 
   useEffect((): (() => void) => {
     /**
@@ -122,6 +134,14 @@ export default function App(): JSX.Element {
   function openSettingsPage(): void {
     writeViewStateToLocation({ mode: 'settings', detailTopic: '' });
     setViewState({ mode: 'settings', detailTopic: '' });
+  }
+
+  /**
+   * Opens values-store mode from top-right header menu.
+   */
+  function openValuesPage(): void {
+    writeViewStateToLocation({ mode: 'values', detailTopic: '' });
+    setViewState({ mode: 'values', detailTopic: '' });
   }
 
   /**
@@ -173,6 +193,7 @@ export default function App(): JSX.Element {
         onNavigateBreadcrumb={navigateBreadcrumb}
         onOpenHome={openOverviewPage}
         onOpenSettings={openSettingsPage}
+        onOpenValues={openValuesPage}
       />
 
       {viewState.mode === 'overview' ? (
@@ -201,9 +222,17 @@ export default function App(): JSX.Element {
           topic={viewState.detailTopic}
           settingsStore={settingsStoreRef.current}
           onBackToOverview={openOverviewPage}
+          onDeferredError={(errorMessage: string): void => {
+            const snackbarContent = mapDeferredErrorToSnackbarContent(errorMessage);
+            if (snackbarContent) {
+              enqueueSnackbar(snackbarContent);
+            }
+          }}
         />
-      ) : (
+      ) : viewState.mode === 'settings' ? (
         <SettingsPage settingsStore={settingsStoreRef.current} settingsClient={settingsClientRef.current} />
+      ) : (
+        <ValuesStorePage valuesClient={valuesClientRef.current} />
       )}
 
       {topSnackbar ? (
@@ -254,19 +283,58 @@ function mapSnackbarContentFromError(errorMessage: string | null): SnackbarConte
 }
 
 /**
+ * Maps deferred (async) error messages to snackbar payload.
+ * @param errorMessage Deferred UI error.
+ * @returns {SnackbarContent | null} Snackbar payload or null when not applicable.
+ */
+function mapDeferredErrorToSnackbarContent(errorMessage: string): SnackbarContent | null {
+  if (errorMessage.startsWith('Fehler beim Publish in der Detailansicht:')) {
+    return {
+      severity: 'warning',
+      message: normalizeErrorMessage(errorMessage, 'Fehler beim Publish in der Detailansicht:'),
+    };
+  }
+
+  if (errorMessage.startsWith('Fehler beim Laden der Detaildaten:')) {
+    return {
+      severity: 'error',
+      message: normalizeErrorMessage(errorMessage, 'Fehler beim Laden der Detaildaten:'),
+    };
+  }
+
+  if (errorMessage.length > 0) {
+    return {
+      severity: 'warning',
+      message: errorMessage,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Converts publish error text into warning text without severity label.
  * @param publishErrorMessage Raw publish error text.
  * @returns {string} User-facing warning text.
  */
 function normalizePublishWarningMessage(publishErrorMessage: string): string {
   const prefix = 'Fehler beim Publish:';
-  if (publishErrorMessage.startsWith(prefix)) {
-    const strippedMessage = publishErrorMessage.slice(prefix.length).trim();
-    if (strippedMessage.length > 0) {
-      return strippedMessage;
-    }
+  return normalizeErrorMessage(publishErrorMessage, prefix);
+}
+
+/**
+ * Removes an optional prefix and returns fallback text when needed.
+ * @param message Raw message.
+ * @param prefix Prefix that should be removed.
+ * @returns {string} Normalized user-facing message.
+ */
+function normalizeErrorMessage(message: string, prefix: string): string {
+  if (!message.startsWith(prefix)) {
+    return message;
   }
-  return publishErrorMessage;
+
+  const strippedMessage = message.slice(prefix.length).trim();
+  return strippedMessage.length > 0 ? strippedMessage : message;
 }
 
 /**
@@ -323,6 +391,9 @@ function readViewStateFromLocation(): AppViewState {
   if (view === 'settings') {
     return { mode: 'settings', detailTopic: '' };
   }
+  if (view === 'values') {
+    return { mode: 'values', detailTopic: '' };
+  }
   return { mode: 'overview', detailTopic: '' };
 }
 
@@ -337,6 +408,9 @@ function writeViewStateToLocation(viewState: AppViewState): void {
     currentUrl.searchParams.set('detailTopic', viewState.detailTopic);
   } else if (viewState.mode === 'settings') {
     currentUrl.searchParams.set('view', 'settings');
+    currentUrl.searchParams.delete('detailTopic');
+  } else if (viewState.mode === 'values') {
+    currentUrl.searchParams.set('view', 'values');
     currentUrl.searchParams.delete('detailTopic');
   } else {
     currentUrl.searchParams.delete('view');

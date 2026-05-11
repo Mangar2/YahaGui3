@@ -11,6 +11,7 @@ import type { TopicNavSettings, TopicSettingsStore } from '../../../domain/setti
 interface NodeSettingsFormProps {
   topic: string;
   settingsStore: TopicSettingsStore;
+  onSettingsChange?: () => void;
 }
 
 interface NodeSettingViewState {
@@ -29,7 +30,7 @@ interface NodeSettingViewState {
  * @returns {JSX.Element} Node settings form.
  */
 export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
-  const { topic, settingsStore } = props;
+  const { topic, settingsStore, onSettingsChange } = props;
 
   const navSettings = useMemo((): TopicNavSettings => {
     return settingsStore.getNavSettings(splitTopic(topic));
@@ -52,6 +53,7 @@ export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
     navSettings.setTopicType(nextTopicType);
     settingsStore.writeToLocalStore();
     setViewState(readViewState(navSettings));
+    onSettingsChange?.();
   }
 
   /**
@@ -63,6 +65,7 @@ export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
     navSettings.setTopicRank(nextRank);
     settingsStore.writeToLocalStore();
     setViewState(readViewState(navSettings));
+    onSettingsChange?.();
   }
 
   /**
@@ -74,6 +77,7 @@ export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
     navSettings.setIconName(nextIcon);
     settingsStore.writeToLocalStore();
     setViewState(readViewState(navSettings));
+    onSettingsChange?.();
   }
 
   /**
@@ -85,6 +89,7 @@ export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
     navSettings.setValueType(nextValueType);
     settingsStore.writeToLocalStore();
     setViewState(readViewState(navSettings));
+    onSettingsChange?.();
   }
 
   /**
@@ -114,6 +119,7 @@ export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
     navSettings.setEnumList(nextList);
     settingsStore.writeToLocalStore();
     setViewState(readViewState(navSettings));
+    onSettingsChange?.();
   }
 
   /**
@@ -131,6 +137,7 @@ export function NodeSettingsForm(props: NodeSettingsFormProps): JSX.Element {
     navSettings.setEnumList(currentList);
     settingsStore.writeToLocalStore();
     setViewState(readViewState(navSettings));
+    onSettingsChange?.();
   }
 
   const showParameterSettings = viewState.topicType === 'Parameter';

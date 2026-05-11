@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { MessagePathBreadcrumb } from '../../message-path/components/MessagePathBreadcrumb';
 
-type HeaderViewMode = 'overview' | 'detail' | 'settings';
+type HeaderViewMode = 'overview' | 'detail' | 'settings' | 'values';
 
 interface AppHeaderProps {
   topicChunks: string[];
@@ -9,6 +9,7 @@ interface AppHeaderProps {
   onNavigateBreadcrumb: (depth: number) => void;
   onOpenHome: () => void;
   onOpenSettings: () => void;
+  onOpenValues: () => void;
 }
 
 /**
@@ -17,7 +18,7 @@ interface AppHeaderProps {
  * @returns {JSX.Element} Header element.
  */
 export function AppHeader(props: AppHeaderProps): JSX.Element {
-  const { topicChunks, currentViewMode, onNavigateBreadcrumb, onOpenHome, onOpenSettings } = props;
+  const { topicChunks, currentViewMode, onNavigateBreadcrumb, onOpenHome, onOpenSettings, onOpenValues } = props;
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -77,6 +78,14 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
     onOpenSettings();
   }
 
+  /**
+   * Opens the Values Store view from menu action.
+   */
+  function openValues(): void {
+    setIsMenuOpen(false);
+    onOpenValues();
+  }
+
   return (
     <header className="app-header">
       <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={onNavigateBreadcrumb} />
@@ -113,6 +122,15 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
               onClick={openSettings}
             >
               Settings
+            </button>
+            <button
+              className="header-menu-item header-menu-item-values"
+              type="button"
+              role="menuitem"
+              disabled={currentViewMode === 'values'}
+              onClick={openValues}
+            >
+              Values Store
             </button>
           </div>
         ) : null}
