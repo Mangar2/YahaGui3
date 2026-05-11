@@ -197,7 +197,11 @@ export default function App(): JSX.Element {
           </div>
         </section>
       ) : viewState.mode === 'detail' ? (
-        <DetailViewPage topic={viewState.detailTopic} onBackToOverview={openOverviewPage} />
+        <DetailViewPage
+          topic={viewState.detailTopic}
+          settingsStore={settingsStoreRef.current}
+          onBackToOverview={openOverviewPage}
+        />
       ) : (
         <SettingsPage settingsStore={settingsStoreRef.current} settingsClient={settingsClientRef.current} />
       )}

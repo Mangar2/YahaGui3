@@ -306,29 +306,8 @@ function getConfiguredIconName(topic: string, settingsStore?: TopicSettingsStore
  * @returns {ControlIconAsset} Icon asset filename relative to /assets, or null when not resolvable.
  */
 function decideIconAsset(iconName: string, topic: string, topicValue: string): ControlIconAsset {
-  const normalizedIconName = iconName.trim();
-  let pictures: string | string[] | null = null;
-
-  if (normalizedIconName.length > 0 && normalizedIconName !== 'Automatic') {
-    pictures = ICONS[normalizedIconName] ?? null;
-  }
-
-  // Legacy order: check final topic chunk before full topic path.
-  const lastChunk = splitTopic(topic).at(-1) ?? '';
-  const checkStrings = [lastChunk, topic];
-  for (const checkString of checkStrings) {
-    if (pictures !== null) {
-      break;
-    }
-
-    const normalizedCheck = checkString.toLowerCase();
-    for (const [pictureName, pictureValue] of Object.entries(ICONS)) {
-      if (normalizedCheck.includes(pictureName.toLowerCase())) {
-        pictures = pictureValue;
-        break;
-      }
-    }
-  }
+  const configuredPictures = getConfiguredPictures(iconName);
+  const pictures = configuredPictures ?? getTopicMatchedPictures(topic);
 
   if (pictures === null) {
     return null;
@@ -336,6 +315,68 @@ function decideIconAsset(iconName: string, topic: string, topicValue: string): C
 
   if (!Array.isArray(pictures)) {
     return pictures;
+  }
+
+  return resolveStatefulIcon(pictures, topicValue);
+}
+
+/**
+ * Returns configured pictures when icon name is explicitly set.
+ * @param iconName Configured icon name.
+ * @returns {string | string[] | null} Mapped icon or null when automatic/unknown.
+ */
+function getConfiguredPictures(iconName: string): string | string[] | null {
+  const normalizedIconName = iconName.trim();
+  if (normalizedIconName.length === 0 || normalizedIconName === 'Automatic') {
+    return null;
+  }
+
+  return ICONS[normalizedIconName] ?? null;
+}
+
+/**
+ * Finds pictures by legacy topic matching order: last chunk, then full topic.
+ * @param topic Full topic path.
+ * @returns {string | string[] | null} Mapped icon pictures or null.
+ */
+function getTopicMatchedPictures(topic: string): string | string[] | null {
+  const lastChunk = splitTopic(topic).at(-1) ?? '';
+  const checkStrings = [lastChunk, topic];
+  for (const checkString of checkStrings) {
+    const matchedPictures = findPicturesByText(checkString);
+    if (matchedPictures !== null) {
+      return matchedPictures;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Finds pictures by matching icon keys in one text.
+ * @param text Source text used for includes matching.
+ * @returns {string | string[] | null} Matching picture entry.
+ */
+function findPicturesByText(text: string): string | string[] | null {
+  const normalizedText = text.toLowerCase();
+  for (const [pictureName, pictureValue] of Object.entries(ICONS)) {
+    if (normalizedText.includes(pictureName.toLowerCase())) {
+      return pictureValue;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Selects one picture from stateful icon variants based on topic value.
+ * @param pictures Stateful icon pictures [off, on].
+ * @param topicValue Current topic value text.
+ * @returns {ControlIconAsset} Selected asset.
+ */
+function resolveStatefulIcon(pictures: string[], topicValue: string): ControlIconAsset {
+  if (pictures.length === 0) {
+    return null;
   }
 
   const topicValueLower = topicValue.toLowerCase();

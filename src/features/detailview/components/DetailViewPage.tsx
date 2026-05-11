@@ -1,11 +1,14 @@
 import { useMemo, type JSX } from 'react';
 import { splitTopic } from '../../../domain/messages/topicPath';
+import type { TopicSettingsStore } from '../../../domain/settings/interfaces';
 import { useDetailTopicController } from '../hooks/useDetailTopicController';
 import { DetailValueTable } from './DetailValueTable';
 import { DetailLineChart } from './DetailLineChart';
+import { NodeSettingsForm } from './NodeSettingsForm';
 
 interface DetailViewPageProps {
   topic: string;
+  settingsStore: TopicSettingsStore;
   onBackToOverview: () => void;
 }
 
@@ -16,7 +19,7 @@ interface DetailViewPageProps {
  * @returns {JSX.Element} Detail page.
  */
 export function DetailViewPage(props: DetailViewPageProps): JSX.Element {
-  const { topic, onBackToOverview } = props;
+  const { topic, settingsStore, onBackToOverview } = props;
   const { activeNode, isLoading, error } = useDetailTopicController(topic);
 
   const topicName = useMemo((): string => {
@@ -41,7 +44,7 @@ export function DetailViewPage(props: DetailViewPageProps): JSX.Element {
       <main className="detail-layout-root">
         <aside className="detail-settings-panel" aria-label="Node settings panel">
           <h3>Node Settings</h3>
-          <p>Layout analog zum Original vorbereitet.</p>
+          <NodeSettingsForm topic={topic} settingsStore={settingsStore} />
         </aside>
 
         <div className="detail-main-panel">
