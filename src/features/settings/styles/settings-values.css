@@ -1,0 +1,359 @@
+.settings-page {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.settings-card {
+  width: 100%;
+  max-width: 34rem;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 1rem 1.1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.settings-card h2 {
+  margin: 0;
+  color: var(--ui-title);
+}
+
+.settings-description {
+  margin: 0;
+  color: #334155;
+}
+
+.settings-control-row {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.settings-label {
+  font-size: 0.88rem;
+  color: #1f2937;
+}
+
+.settings-select {
+  min-height: 2.2rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.settings-select:hover {
+  border-color: #9ca3af;
+}
+
+.settings-select:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.settings-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+
+.settings-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.settings-button {
+  min-height: 2.2rem;
+  min-width: 6.3rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #1f2937;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+
+.settings-button:hover {
+  border-color: #9ca3af;
+  background: #f1f5f9;
+}
+
+.settings-button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.settings-button:active {
+  transform: translateY(1px);
+  background: #e2e8f0;
+}
+
+.settings-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #eef2f7;
+}
+
+.settings-button-primary {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.settings-button-primary:hover {
+  border-color: #1e40af;
+  background: #1e40af;
+}
+
+.settings-button-primary:disabled {
+  border-color: #93c5fd;
+  background: #93c5fd;
+  color: #eff6ff;
+}
+
+.settings-meta,
+.settings-status,
+.settings-error {
+  margin: 0;
+}
+
+.settings-meta {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.settings-status {
+  color: #166534;
+  font-weight: 600;
+}
+
+.settings-error {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.values-store-card {
+  max-width: 56rem;
+}
+
+.values-store-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.values-store-grid-head {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: minmax(11rem, 2.3fr) minmax(7rem, 1fr) minmax(10rem, 1.9fr) minmax(4.8rem, 5.2rem);
+  padding: 0 0.5rem;
+}
+
+.values-store-row-block {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.values-store-row {
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 10px;
+  background: #fcfdff;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: minmax(11rem, 2.3fr) minmax(7rem, 1fr) minmax(10rem, 1.9fr) minmax(4.8rem, 5.2rem);
+  align-items: end;
+}
+
+.values-store-row:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.values-store-cell {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.values-store-cell-label {
+  display: none;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.values-store-header {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #334155;
+  padding: 0 0.1rem;
+}
+
+.values-store-input,
+.values-store-select,
+.values-store-icon-button {
+  min-height: 2.1rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.values-store-input:hover,
+.values-store-select:hover,
+.values-store-icon-button:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.values-store-input:focus-visible,
+.values-store-select:focus-visible,
+.values-store-icon-button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+.values-store-input:active,
+.values-store-select:active,
+.values-store-icon-button:active {
+  transform: translateY(1px);
+}
+
+.values-store-input:disabled,
+.values-store-select:disabled,
+.values-store-icon-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #eef2f7;
+}
+
+.values-store-select {
+  appearance: none;
+}
+
+.values-store-action-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+}
+
+.values-store-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+}
+
+.values-store-icon-button {
+  cursor: pointer;
+  width: 2.1rem;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  min-height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.values-store-icon {
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
+  fill: currentColor;
+  stroke: none;
+}
+
+.values-store-icon-button-save {
+  color: #ffffff;
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.values-store-icon-button-save:hover {
+  border-color: #1e40af;
+  background: #1e40af;
+}
+
+.values-store-icon-button-save:disabled {
+  border-color: #93c5fd;
+  background: #93c5fd;
+  color: #eff6ff;
+}
+
+.values-store-icon-button-remove {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.values-store-icon-button-remove:hover {
+  border-color: #fda4af;
+  background: #ffe4e6;
+}
+
+.values-store-row-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0 0.4rem;
+}
+
+@media (max-width: 44rem) {
+  .settings-card {
+    max-width: 100%;
+  }
+
+  .values-store-card {
+    max-width: 100%;
+  }
+
+  .values-store-header {
+    display: none;
+  }
+
+  .values-store-grid-head {
+    display: none;
+  }
+
+  .values-store-row {
+    grid-template-columns: 1fr;
+  }
+
+  .values-store-cell-label {
+    display: inline-block;
+  }
+
+  .values-store-action-cell {
+    justify-content: flex-start;
+  }
+
+  .values-store-actions {
+    justify-content: flex-start;
+  }
+
+  .values-store-icon-button {
+    width: 2.1rem;
+    min-width: 2.1rem;
+  }
+
+  .values-store-row-error {
+    padding: 0;
+  }
+
+  .settings-action-row {
+    flex-direction: column;
+  }
+
+  .settings-button {
+    width: 100%;
+    min-width: 100%;
+  }
+}
+

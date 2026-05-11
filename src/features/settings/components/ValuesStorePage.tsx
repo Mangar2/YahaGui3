@@ -1,4 +1,4 @@
-import { useMemo, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import type { ValueStorePayload, ValueStoreScalar } from '../../../domain/values/interfaces';
 import { ValuesStoreClientError, type ValuesStoreClient } from '../../../infrastructure/values/valuesStoreClient';
 
@@ -11,11 +11,16 @@ interface ValuesStoreRow {
   key: string;
   valueText: string;
   valueType: ValueTypeOption;
+  initialKey: string;
+  initialValueText: string;
+  initialValueType: ValueTypeOption;
 }
 
 interface ValuesStorePageProps {
   valuesClient: ValuesStoreClient;
 }
+
+type RowValidationErrors = Record<string, string>;
 
 /**
  * Values-store editor for managing key/value pairs in file-store.
@@ -26,6 +31,7 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
   const { valuesClient } = props;
 
   const [rows, setRows] = useState<ValuesStoreRow[]>([createEmptyRow()]);
+  const [rowValidationErrors, setRowValidationErrors] = useState<RowValidationErrors>({});
   const [requestState, setRequestState] = useState<ValuesRequestState>('idle');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -42,22 +48,27 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
    * Loads values from backend file-store and maps them into editable rows.
    * @returns {Promise<void>} Resolves when load flow is complete.
    */
-  async function loadValues(): Promise<void> {
+  const loadValues = useCallback(async (): Promise<void> => {
     setRequestState('loading');
     setStatusMessage('');
     setErrorMessage('');
+    setRowValidationErrors({});
 
     try {
       const payload = await valuesClient.readValues();
       const parsedRows = mapPayloadToRows(payload);
-      setRows(parsedRows.length > 0 ? parsedRows : [createEmptyRow()]);
+      setRows(ensureRowsHaveTrailingEmptyRow(parsedRows));
       setStatusMessage(`Values geladen (${String(parsedRows.length)} Eintraege).`);
     } catch (error: unknown) {
       setErrorMessage(formatValuesError(error));
     } finally {
       setRequestState('idle');
     }
-  }
+  }, [valuesClient]);
+
+  useEffect((): void => {
+    void loadValues();
+  }, [loadValues]);
 
   /**
    * Validates and stores current rows as values-store payload.
@@ -68,9 +79,20 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
     setStatusMessage('');
     setErrorMessage('');
 
+    const validationErrors = validateRows(rows);
+    if (Object.keys(validationErrors).length > 0) {
+      setRowValidationErrors(validationErrors);
+      setRequestState('idle');
+      return;
+    }
+
     try {
       const payload = buildPayloadFromRows(rows);
       await valuesClient.storeValues(payload);
+      setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => {
+        return ensureRowsHaveTrailingEmptyRow(markRowsAsSynced(currentRows));
+      });
+      setRowValidationErrors({});
       setStatusMessage(`Values gespeichert (${String(Object.keys(payload).length)} Eintraege).`);
     } catch (error: unknown) {
       setErrorMessage(formatValuesError(error));
@@ -80,20 +102,23 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
   }
 
   /**
-   * Adds one new empty row to the editor.
-   */
-  function addRow(): void {
-    setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => [...currentRows, createEmptyRow()]);
-  }
-
-  /**
    * Removes one row by id while keeping at least one editable row.
    * @param rowId Row identifier.
    */
   function removeRow(rowId: string): void {
+    setRowValidationErrors((currentErrors: RowValidationErrors): RowValidationErrors => {
+      if (!(rowId in currentErrors)) {
+        return currentErrors;
+      }
+
+      return Object.fromEntries(
+        Object.entries(currentErrors).filter(([currentRowId]): boolean => currentRowId !== rowId),
+      );
+    });
+
     setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => {
       const remainingRows = currentRows.filter((row: ValuesStoreRow): boolean => row.id !== rowId);
-      return remainingRows.length > 0 ? remainingRows : [createEmptyRow()];
+      return ensureRowsHaveTrailingEmptyRow(remainingRows);
     });
   }
 
@@ -103,8 +128,10 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
    * @param nextKey Updated key.
    */
   function updateRowKey(rowId: string, nextKey: string): void {
+    clearRowValidationError(rowId);
+
     setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => {
-      return currentRows.map((row: ValuesStoreRow): ValuesStoreRow => {
+      const updatedRows = currentRows.map((row: ValuesStoreRow): ValuesStoreRow => {
         if (row.id !== rowId) {
           return row;
         }
@@ -114,6 +141,8 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
           key: nextKey,
         };
       });
+
+      return ensureRowsHaveTrailingEmptyRow(updatedRows);
     });
   }
 
@@ -123,8 +152,10 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
    * @param nextValueText Updated raw value text.
    */
   function updateRowValueText(rowId: string, nextValueText: string): void {
+    clearRowValidationError(rowId);
+
     setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => {
-      return currentRows.map((row: ValuesStoreRow): ValuesStoreRow => {
+      const updatedRows = currentRows.map((row: ValuesStoreRow): ValuesStoreRow => {
         if (row.id !== rowId) {
           return row;
         }
@@ -134,6 +165,8 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
           valueText: nextValueText,
         };
       });
+
+      return ensureRowsHaveTrailingEmptyRow(updatedRows);
     });
   }
 
@@ -143,8 +176,10 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
    * @param nextType Updated value type.
    */
   function updateRowValueType(rowId: string, nextType: ValueTypeOption): void {
+    clearRowValidationError(rowId);
+
     setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => {
-      return currentRows.map((row: ValuesStoreRow): ValuesStoreRow => {
+      const updatedRows = currentRows.map((row: ValuesStoreRow): ValuesStoreRow => {
         if (row.id !== rowId) {
           return row;
         }
@@ -155,28 +190,33 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
           valueText: normalizeRowValueTextForType(nextType, row.valueText),
         };
       });
+
+      return ensureRowsHaveTrailingEmptyRow(updatedRows);
+    });
+  }
+
+  /**
+   * Clears one row-level validation error.
+   * @param rowId Row identifier.
+   */
+  function clearRowValidationError(rowId: string): void {
+    setRowValidationErrors((currentErrors: RowValidationErrors): RowValidationErrors => {
+      if (!(rowId in currentErrors)) {
+        return currentErrors;
+      }
+
+      return Object.fromEntries(
+        Object.entries(currentErrors).filter(([currentRowId]): boolean => currentRowId !== rowId),
+      );
     });
   }
 
   return (
     <section className="settings-page" aria-live="polite">
       <div className="settings-card values-store-card">
-        <h2>Values Store</h2>
-        <p className="settings-description">
-          Bearbeite Key/Value-Paare fuer die Datei /valueservice/values und speichere sie direkt im FileStore.
-        </p>
+        <h2>Globale Werte</h2>
 
         <div className="settings-action-row">
-          <button
-            className="settings-button"
-            type="button"
-            onClick={(): void => {
-              void saveValues();
-            }}
-            disabled={isBusy}
-          >
-            {isSaving ? 'Speichert...' : 'Save'}
-          </button>
           <button
             className="settings-button settings-button-primary"
             type="button"
@@ -187,80 +227,114 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
           >
             {isLoading ? 'Laedt...' : 'Load'}
           </button>
-          <button className="settings-button" type="button" onClick={addRow} disabled={isBusy}>
-            Add Row
-          </button>
         </div>
 
         <p className="settings-meta">Aktive Eintraege: {String(nonEmptyRowCount)}</p>
 
         <div className="values-store-grid" role="group" aria-label="Values Store Eintraege">
-          <div className="values-store-header values-store-col-key">Key</div>
-          <div className="values-store-header values-store-col-type">Type</div>
-          <div className="values-store-header values-store-col-value">Value</div>
-          <div className="values-store-header values-store-col-actions">Action</div>
+          <div className="values-store-grid-head" aria-hidden="true">
+            <div className="values-store-header values-store-col-key">Key</div>
+            <div className="values-store-header values-store-col-type">Type</div>
+            <div className="values-store-header values-store-col-value">Value</div>
+            <div className="values-store-header values-store-col-actions" />
+          </div>
 
           {rows.map((row: ValuesStoreRow): JSX.Element => {
+            const rowErrorMessage = rowValidationErrors[row.id];
+            const rowIsEmpty = isRowEmpty(row);
+            const rowIsChanged = isRowChanged(row);
+
             return (
-              <div className="values-store-row" key={row.id}>
-                <label className="values-store-cell values-store-col-key">
-                  <span className="values-store-cell-label">Key</span>
-                  <input
-                    className="values-store-input"
-                    type="text"
-                    value={row.key}
-                    onChange={(event): void => {
-                      updateRowKey(row.id, event.currentTarget.value);
-                    }}
-                    disabled={isBusy}
-                    placeholder="house/light"
-                  />
-                </label>
+              <div className="values-store-row-block" key={row.id}>
+                <div className="values-store-row">
+                  <label className="values-store-cell values-store-col-key">
+                    <span className="values-store-cell-label">Key</span>
+                    <input
+                      className="values-store-input"
+                      type="text"
+                      value={row.key}
+                      onChange={(event): void => {
+                        updateRowKey(row.id, event.currentTarget.value);
+                      }}
+                      disabled={isBusy}
+                      placeholder="house/light"
+                    />
+                  </label>
 
-                <label className="values-store-cell values-store-col-type">
-                  <span className="values-store-cell-label">Type</span>
-                  <select
-                    className="values-store-select"
-                    value={row.valueType}
-                    onChange={(event): void => {
-                      updateRowValueType(row.id, parseValueTypeOption(event.currentTarget.value));
-                    }}
-                    disabled={isBusy}
-                  >
-                    <option value="string">string</option>
-                    <option value="number">number</option>
-                    <option value="boolean">boolean</option>
-                    <option value="null">null</option>
-                  </select>
-                </label>
+                  <label className="values-store-cell values-store-col-type">
+                    <span className="values-store-cell-label">Type</span>
+                    <select
+                      className="values-store-select"
+                      value={row.valueType}
+                      onChange={(event): void => {
+                        updateRowValueType(row.id, parseValueTypeOption(event.currentTarget.value));
+                      }}
+                      disabled={isBusy}
+                    >
+                      <option value="string">string</option>
+                      <option value="number">number</option>
+                      <option value="boolean">boolean</option>
+                      <option value="null">null</option>
+                    </select>
+                  </label>
 
-                <label className="values-store-cell values-store-col-value">
-                  <span className="values-store-cell-label">Value</span>
-                  <input
-                    className="values-store-input"
-                    type="text"
-                    value={row.valueText}
-                    onChange={(event): void => {
-                      updateRowValueText(row.id, event.currentTarget.value);
-                    }}
-                    disabled={isBusy || row.valueType === 'null'}
-                    placeholder={getValuePlaceholder(row.valueType)}
-                  />
-                </label>
+                  <label className="values-store-cell values-store-col-value">
+                    <span className="values-store-cell-label">Value</span>
+                    <input
+                      className="values-store-input"
+                      type="text"
+                      value={row.valueText}
+                      onChange={(event): void => {
+                        updateRowValueText(row.id, event.currentTarget.value);
+                      }}
+                      disabled={isBusy || row.valueType === 'null'}
+                      placeholder={getValuePlaceholder(row.valueType)}
+                    />
+                  </label>
 
-                <div className="values-store-cell values-store-col-actions values-store-action-cell">
-                  <span className="values-store-cell-label">Action</span>
-                  <button
-                    className="values-store-remove"
-                    type="button"
-                    onClick={(): void => {
-                      removeRow(row.id);
-                    }}
-                    disabled={isBusy || rows.length === 1}
-                  >
-                    Remove
-                  </button>
+                  <div className="values-store-cell values-store-col-actions values-store-action-cell">
+                    <div className="values-store-actions">
+                      <button
+                        className="values-store-icon-button values-store-icon-button-save"
+                        type="button"
+                        onClick={(): void => {
+                          void saveValues();
+                        }}
+                        disabled={isBusy || !rowIsChanged}
+                        aria-label="Save row changes"
+                        title="Save"
+                      >
+                        {isSaving ? (
+                          <span className="values-store-icon" aria-hidden="true">
+                            ...
+                          </span>
+                        ) : (
+                          <svg className="values-store-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <path d="M13.2 3.2a1 1 0 0 0-1.4 0L6.7 8.3 4.2 5.8a1 1 0 0 0-1.4 1.4l3.2 3.2a1 1 0 0 0 1.4 0l5.8-5.8a1 1 0 0 0 0-1.4Z" />
+                          </svg>
+                        )}
+                      </button>
+                      {!rowIsEmpty ? (
+                        <button
+                          className="values-store-icon-button values-store-icon-button-remove"
+                          type="button"
+                          onClick={(): void => {
+                            removeRow(row.id);
+                          }}
+                          disabled={isBusy || rows.length === 1}
+                          aria-label="Remove row"
+                          title="Remove"
+                        >
+                          <svg className="values-store-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <path d="M6 1.5h4a1 1 0 0 1 1 1V3h2.5a1 1 0 1 1 0 2h-.6l-.8 8.2a1.6 1.6 0 0 1-1.6 1.4H5.5a1.6 1.6 0 0 1-1.6-1.4L3.1 5H2.5a1 1 0 1 1 0-2H5v-.5a1 1 0 0 1 1-1Zm1 1.5v-.5h2V3H7Zm-1.4 2 .7 7.6h3.4l.7-7.6H5.6Z" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
+
+                {rowErrorMessage ? <p className="values-store-row-error">{rowErrorMessage}</p> : null}
               </div>
             );
           })}
@@ -283,6 +357,9 @@ function createEmptyRow(): ValuesStoreRow {
     key: '',
     valueText: '',
     valueType: 'string',
+    initialKey: '',
+    initialValueText: '',
+    initialValueType: 'string',
   };
 }
 
@@ -323,9 +400,128 @@ function mapPayloadToRows(payload: ValueStorePayload): ValuesStoreRow[] {
       key,
       valueType: getValueTypeFromScalar(value),
       valueText: scalarToEditorValue(value),
+      initialKey: key,
+      initialValueText: scalarToEditorValue(value),
+      initialValueType: getValueTypeFromScalar(value),
     });
   }
   return result;
+}
+
+/**
+ * Updates row snapshots after a successful save operation.
+ * @param rows Current row list.
+ * @returns {ValuesStoreRow[]} Rows with synchronized initial snapshots.
+ */
+function markRowsAsSynced(rows: ValuesStoreRow[]): ValuesStoreRow[] {
+  return rows.map((row: ValuesStoreRow): ValuesStoreRow => {
+    return {
+      ...row,
+      initialKey: row.key,
+      initialValueText: row.valueText,
+      initialValueType: row.valueType,
+    };
+  });
+}
+
+/**
+ * Ensures editor rows keep exactly one empty row at the end.
+ * @param rows Candidate row list.
+ * @returns {ValuesStoreRow[]} Normalized row list.
+ */
+function ensureRowsHaveTrailingEmptyRow(rows: ValuesStoreRow[]): ValuesStoreRow[] {
+  if (rows.length === 0) {
+    return [createEmptyRow()];
+  }
+
+  const withoutTrailingEmptyRows = removeTrailingEmptyRows(rows);
+  return [...withoutTrailingEmptyRows, createEmptyRow()];
+}
+
+/**
+ * Removes trailing empty rows while preserving non-empty rows.
+ * @param rows Candidate row list.
+ * @returns {ValuesStoreRow[]} Row list without trailing empty rows.
+ */
+function removeTrailingEmptyRows(rows: ValuesStoreRow[]): ValuesStoreRow[] {
+  const clonedRows = [...rows];
+  while (clonedRows.length > 0 && isRowEmpty(clonedRows.at(-1) ?? createEmptyRow())) {
+    clonedRows.pop();
+  }
+  return clonedRows;
+}
+
+/**
+ * Checks whether one row contains no effective user input.
+ * @param row Candidate row.
+ * @returns {boolean} True when row is empty.
+ */
+function isRowEmpty(row: ValuesStoreRow): boolean {
+  const hasKey = row.key.trim().length > 0;
+  const hasValueText = row.valueText.trim().length > 0;
+  return !hasKey && !hasValueText;
+}
+
+/**
+ * Checks whether a row differs from its last loaded/saved snapshot.
+ * @param row Candidate row.
+ * @returns {boolean} True when row content has changed.
+ */
+function isRowChanged(row: ValuesStoreRow): boolean {
+  return (
+    row.key !== row.initialKey ||
+    row.valueText !== row.initialValueText ||
+    row.valueType !== row.initialValueType
+  );
+}
+
+/**
+ * Validates editor rows and returns row-specific error messages.
+ * @param rows Row list to validate.
+ * @returns {RowValidationErrors} Validation errors by row id.
+ */
+function validateRows(rows: ValuesStoreRow[]): RowValidationErrors {
+  const validationErrors: RowValidationErrors = {};
+  const keyToRowIds = new Map<string, string[]>();
+
+  for (const row of rows) {
+    const key = row.key.trim();
+    const hasValueInput = row.valueText.trim().length > 0;
+
+    if (key.length === 0) {
+      if (hasValueInput) {
+        validationErrors[row.id] = 'Key fehlt: Bitte Key eintragen oder Value leeren.';
+      }
+      continue;
+    }
+
+    const existingRowIdsForKey = keyToRowIds.get(key) ?? [];
+    keyToRowIds.set(key, [...existingRowIdsForKey, row.id]);
+
+    try {
+      void parseValueFromRow(row);
+    } catch (error: unknown) {
+      if (error instanceof ValuesStoreClientError) {
+        validationErrors[row.id] = error.message;
+      } else if (error instanceof Error) {
+        validationErrors[row.id] = error.message;
+      } else {
+        validationErrors[row.id] = 'Ungueltiger Wert in dieser Zeile.';
+      }
+    }
+  }
+
+  for (const rowIds of keyToRowIds.values()) {
+    if (rowIds.length < 2) {
+      continue;
+    }
+
+    for (const rowId of rowIds) {
+      validationErrors[rowId] = 'Doppelter Key ist nicht erlaubt.';
+    }
+  }
+
+  return validationErrors;
 }
 
 /**
