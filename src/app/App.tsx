@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import type { TopicControlItem } from '../domain/messages/controlElementDecisions';
 import { getSnackbarDurationMs, type SnackbarSeverity } from '../config/notificationConfigService';
+import { getConfigStoreBaseUrl, getConfigStorePath } from '../config/runtime';
+import { TopicSettingsStore } from '../domain/settings/interfaces';
 import { DetailViewPage } from '../features/detailview/components';
+import { AppHeader } from '../features/layout/components/AppHeader';
 import { LeftTopicNavigation } from '../features/message-path/components/LeftTopicNavigation';
-import { MessagePathBreadcrumb } from '../features/message-path/components/MessagePathBreadcrumb';
 import { useMessagePathController } from '../features/message-path/hooks/useMessagePathController';
 import { RightTopicControls } from '../features/overview-controls/components/RightTopicControls';
+import { SettingsPage } from '../features/settings/components';
+import { SettingsConfigClient } from '../infrastructure/settings/settingsConfigClient';
 
-type AppViewMode = 'overview' | 'detail';
+type AppViewMode = 'overview' | 'detail' | 'settings';
 
 interface AppViewState {
   mode: AppViewMode;
@@ -40,6 +44,10 @@ export default function App(): JSX.Element {
   const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
   const [snackbarStack, setSnackbarStack] = useState<SnackbarState[]>([]);
   const snackbarTimeoutsRef = useRef<Map<number, number>>(new Map<number, number>());
+  const settingsStoreRef = useRef<TopicSettingsStore>(new TopicSettingsStore());
+  const settingsClientRef = useRef<SettingsConfigClient>(
+    new SettingsConfigClient(getConfigStoreBaseUrl(), getConfigStorePath()),
+  );
 
   useEffect((): (() => void) => {
     return (): void => {
@@ -108,12 +116,20 @@ export default function App(): JSX.Element {
   }
 
   /**
+   * Opens settings mode from top-right header menu.
+   */
+  function openSettingsPage(): void {
+    writeViewStateToLocation({ mode: 'settings', detailTopic: '' });
+    setViewState({ mode: 'settings', detailTopic: '' });
+  }
+
+  /**
    * Navigates via breadcrumb and leaves detail mode when active.
    * @param depth Amount of topic chunks to keep.
    */
   function navigateBreadcrumb(depth: number): void {
     navigateToDepth(depth);
-    if (viewState.mode === 'detail') {
+    if (viewState.mode !== 'overview') {
       openOverviewPage();
     }
   }
@@ -150,9 +166,13 @@ export default function App(): JSX.Element {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={navigateBreadcrumb} />
-      </header>
+      <AppHeader
+        topicChunks={topicChunks}
+        currentViewMode={viewState.mode}
+        onNavigateBreadcrumb={navigateBreadcrumb}
+        onOpenHome={openOverviewPage}
+        onOpenSettings={openSettingsPage}
+      />
 
       {viewState.mode === 'overview' ? (
         <section className="overview-layout" aria-live="polite">
@@ -175,8 +195,10 @@ export default function App(): JSX.Element {
             {error && !isPublishErrorMessage(error) ? <p className="error-text">{error}</p> : null}
           </div>
         </section>
-      ) : (
+      ) : viewState.mode === 'detail' ? (
         <DetailViewPage topic={viewState.detailTopic} onBackToOverview={openOverviewPage} />
+      ) : (
+        <SettingsPage settingsStore={settingsStoreRef.current} settingsClient={settingsClientRef.current} />
       )}
 
       {topSnackbar ? (
@@ -293,6 +315,9 @@ function readViewStateFromLocation(): AppViewState {
   if (view === 'detail') {
     return { mode: 'detail', detailTopic };
   }
+  if (view === 'settings') {
+    return { mode: 'settings', detailTopic: '' };
+  }
   return { mode: 'overview', detailTopic: '' };
 }
 
@@ -305,6 +330,9 @@ function writeViewStateToLocation(viewState: AppViewState): void {
   if (viewState.mode === 'detail') {
     currentUrl.searchParams.set('view', 'detail');
     currentUrl.searchParams.set('detailTopic', viewState.detailTopic);
+  } else if (viewState.mode === 'settings') {
+    currentUrl.searchParams.set('view', 'settings');
+    currentUrl.searchParams.delete('detailTopic');
   } else {
     currentUrl.searchParams.delete('view');
     currentUrl.searchParams.delete('detailTopic');

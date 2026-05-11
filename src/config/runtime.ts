@@ -8,6 +8,7 @@ interface YahaGuiRuntimeConfig {
   messageStorePath?: string;
   publishPath?: string;
   publishTopicSetSuffix?: string;
+  configStorePath?: string;
 }
 
 /**
@@ -43,6 +44,14 @@ export function getPublishTopicSetSuffix(): string {
 }
 
 /**
+ * Returns the configured settings config path root.
+ * @returns {string} Relative path that starts with '/'.
+ */
+export function getConfigStorePath(): string {
+  return getApiConfig().configStorePath;
+}
+
+/**
  * Returns the runtime base URL for message-store calls.
  * @returns {string} Absolute base URL.
  */
@@ -59,6 +68,14 @@ export function getPublishBaseUrl(): string {
 }
 
 /**
+ * Returns the runtime base URL for settings config calls.
+ * @returns {string} Absolute base URL.
+ */
+export function getConfigStoreBaseUrl(): string {
+  return getGuiApiBaseUrl();
+}
+
+/**
  * Resolves the effective API configuration by merging selected profile with optional runtime overrides.
  * @returns {YahaEnvironmentConfig} Effective HTTP interface config.
  */
@@ -70,6 +87,7 @@ export function getApiConfig(): YahaEnvironmentConfig {
     messageStorePath: runtimeConfig.messageStorePath ?? ENVIRONMENT.messageStorePath,
     publishPath: runtimeConfig.publishPath ?? ENVIRONMENT.publishPath,
     publishTopicSetSuffix: runtimeConfig.publishTopicSetSuffix ?? ENVIRONMENT.publishTopicSetSuffix,
+    configStorePath: runtimeConfig.configStorePath ?? ENVIRONMENT.configStorePath,
   };
 }
 
@@ -104,6 +122,11 @@ function getRuntimeConfig(): YahaGuiRuntimeConfig {
   const publishTopicSetSuffix = normalizeTopicSuffix(globalConfigValue.publishTopicSetSuffix);
   if (publishTopicSetSuffix) {
     runtimeConfig.publishTopicSetSuffix = publishTopicSetSuffix;
+  }
+
+  const configStorePath = normalizeConfigPath(globalConfigValue.configStorePath);
+  if (configStorePath) {
+    runtimeConfig.configStorePath = configStorePath;
   }
 
   return runtimeConfig;

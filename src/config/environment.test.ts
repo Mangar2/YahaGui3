@@ -5,4 +5,5 @@ export const ENVIRONMENT: YahaEnvironmentConfig = {
   messageStorePath: '/store',
   publishPath: '/publish',
   publishTopicSetSuffix: '/set',
+  configStorePath: '/kvstore/yaha/gui/config',
 };

@@ -1,0 +1,1100 @@
+{
+    "": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "cellar/hobbycellar": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "cellar": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "ground": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "ground/wardrobe/ventilation": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "cellar/boilerroom/switches/switch/camera": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/study/zwave/switch/pcregina": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Switch",
+            "topicRank": "3"
+        }
+    },
+    "first/study/zwave/switch": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "$SYS/debug": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Information"
+        }
+    },
+    "outdoor/garden/weather2/sensor/temperature": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "outdoor/garden/weather2/sensor/humidity": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "$SYS/presence": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1",
+            "topicType": "Parameter",
+            "enumList": "[\"awake\",\"absent\",\"sleeping\"]",
+            "valueType": "Enumeration"
+        }
+    },
+    "ground/wardrobe/zwave/switch/ventilation": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1",
+            "topicType": "Switch"
+        }
+    },
+    "ground/livingroom/zwave/switch/camera": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "ground/livingroom/zwave/switch/floodlight": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "ground/livingroom/zwave/switch/charge": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/livingroom/zwave/switch/multimedia": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/livingroom/zwave/switch/vacuum cleaner": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "first/study/zwave/switch/pcvolker": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "first/study/zwave/switch/laserprinter": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "first/study/zwave/switch/vacuum cleaner": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/hobbycellar/west/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Light",
+            "topicRank": "2"
+        }
+    },
+    "first/study/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Light",
+            "topicRank": "2"
+        }
+    },
+    "ground/wardrobe/zwave/sys/ventilation/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "icon_base": "Automatic"
+        }
+    },
+    "ground/wardrobe/fs20/switch/floor heating": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/boilerroom/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Light"
+        }
+    },
+    "cellar/hobbycellar/north/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Light"
+        }
+    },
+    "cellar/hobbycellar/east/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Light"
+        }
+    },
+    "cellar/hobbycellar/east/window/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Window"
+        }
+    },
+    "cellar/hobbycellar/west/window/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Window"
+        }
+    },
+    "cellar/boilerroom/main/window/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Window"
+        }
+    },
+    "cellar/storeroom/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Light",
+            "topicRank": "2"
+        }
+    },
+    "cellar/hallway/main": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "cellar/boilerroom/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3",
+            "topicType": "Information"
+        }
+    },
+    "cellar/boilerroom/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/hobbycellar/north/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/hobbycellar/north/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/hobbycellar/west/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/west/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/hallway/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Light"
+        }
+    },
+    "cellar/hallway/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/hallway/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/storeroom/main/window/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Window",
+            "topicRank": "2"
+        }
+    },
+    "first/hallway/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/hallway/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/hallway/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2",
+            "topicType": "Light"
+        }
+    },
+    "first/study/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/study/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/dressingroom/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/dressingroom/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Light",
+            "topicRank": "2"
+        }
+    },
+    "first/dressingroom/zwave/switch/dressing room": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Switch",
+            "topicRank": "3"
+        }
+    },
+    "first/dressingroom/zwave/sys/dressing room": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/bathroom/main/light/light on time": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Light",
+            "topicRank": "2"
+        }
+    },
+    "first/bathroom/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/bathroom/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/livingroom/main/ficus/temperature": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/livingroom/main/ficus/watering": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Information"
+        }
+    },
+    "cellar/storeroom/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/storeroom/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/main/light/light on time in seconds": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Parameter",
+            "valueType": "Integer"
+        }
+    },
+    "outdoor/garden/temperature": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "outdoor/garden/main": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "outdoor/garden/main/weather/temperature": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/main/weather/pressure": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/main/weather/humidity": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/hallway/center/light/light on time in seconds": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Parameter"
+        }
+    },
+    "ground/hallway/wall/light/light on time in seconds": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Parameter"
+        }
+    },
+    "outdoor/garden/weather2/sensor/pressure": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/boilerroom/switches/roller shutter/roller shutter key": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/livingroom/zwave/shutter/southeast": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1",
+            "topicType": "Parameter",
+            "valueType": "Enumeration",
+            "icon_base": "Roller",
+            "enumList": "[\"on\",\"off\",\"0\"]",
+            "icon": "Roller"
+        }
+    },
+    "ground/livingroom/zwave/shutter/southwest": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1",
+            "topicType": "Parameter",
+            "valueType": "Enumeration",
+            "icon": "Roller",
+            "enumList": "[\"on\",\"off\",\"0\"]"
+        }
+    },
+    "outdoor/garden": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "ground/livingroom/zwave/sys": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "ground/livingroom/zwave/sys/floodlight/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/kitchen/zwave/switch/dishwasher": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/kitchen/zwave/switch/fridge": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "cellar/boilerroom/switches/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/boilerroom/switches/arduino base settings/reporting delay in seconds": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/boilerroom/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/boilerroom/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/boilerroom/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/roller/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/roller/arduino base settings/reporting delay in seconds": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/motion": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "cellar/hobbycellar/motion/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/motion/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/north": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "cellar/hobbycellar/north/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/north/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/north/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/north/arduino base settings/reporting delay in seconds": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/east/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/east/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/east/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/east/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/west/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/west/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hobbycellar/west/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/storeroom/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/storeroom/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/storeroom/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/storeroom/main/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/storeroom/main/water leakage/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hallway/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hallway/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "cellar/hallway/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/study/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/main/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/study/zwave/sys/master/Energy": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys/master/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys/pcregina/Energy": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys/pcregina/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys/pcvolker/Instance 2: Energy": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys/pcvolker/Instance 2: Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/sys/vacuum cleaner/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/study/zwave/switch/master": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "first/hallway/main": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/hallway/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/hallway/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/hallway/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/hallway/main/arduino base settings": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/hallway/main/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/main/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/zwave/sys/dressing room/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/dressingroom/zwave/sys/dressing room/Energy": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/bathroom/main": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/bathroom/main/brightness Sensor/brightness in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/bathroom/main/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/bedroom/main": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "first/bedroom/main/arduino status information/internal temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "first/bedroom/main/arduino base settings/device address": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/main/switch": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "outdoor/garden/main/switch/socket stonefield": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "outdoor/garden/main/switch/light stairs": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "outdoor/garden/main/switch/pump": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "outdoor/garden/main/switch/socket parkingplace": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "outdoor/garden/fs20/switch/light stonefield": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "outdoor/garden/fs20/switch/light pathway": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "outdoor/garden/fs20/switch/brook": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/weather2/battery/voltage": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/tomatov2/battery/voltage": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/light stairs/on morning": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/light stairs/off morning": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/light stairs/sunrise delay": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/light stairs/off evening": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "outdoor/garden/light stairs/sunset delay": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/wardrobe/zwave/switch/central": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/wardrobe/zwave/sys/central/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/wardrobe/zwave/sys/central/Energy": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/i2c/switch/network switch": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/i2c/switch/charge": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/i2c/switch/monitor": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/i2c/switch/backup": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/i2c/switch/server": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/wardrobe/i2c/switch/internet": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/wardrobe/main/brightness sensor/brightness": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/wardrobe/main/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/main/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/main/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/wardrobe/zwave/sys/ventilation/Energy": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/wardrobe/floorHeating/lowtemperature": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/hallway/center/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "ground/hallway/center/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "1"
+        }
+    },
+    "ground/hallway/center/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/hallway/wall/brightness sensor/brightness": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/hallway/wall/temperature and humidity sensor/humidity in percent": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/hallway/wall/temperature and humidity sensor/temperature in celsius": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "3"
+        }
+    },
+    "ground/hallway/wall/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/livingroom/zwave/switch": {
+        "disabled": [],
+        "parameter": {}
+    },
+    "ground/livingroom/zwave/sys/vacuum cleaner/Power": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/livingroom/fs20/switch/amplifier": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/livingroom/fs20/switch/appletv": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/livingroom/motionv2/battery/voltage": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "2"
+        }
+    },
+    "ground/livingroom/motionv2/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "ground/livingroom/lamp/motion sensor/detection state": {
+        "disabled": [],
+        "parameter": {
+            "topicRank": "4"
+        }
+    },
+    "$SYS/automation/update": {
+        "disabled": [],
+        "parameter": {
+            "topicType": "Parameter"
+        }
+    },
+    "$SYS": {
+        "disabled": [],
+        "parameter": {}
+    }
+}

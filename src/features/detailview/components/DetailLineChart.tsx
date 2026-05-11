@@ -28,6 +28,12 @@ interface ChartRect {
   height: number;
 }
 
+interface NiceYAxisScale {
+  ticks: number[];
+  min: number;
+  max: number;
+}
+
 const RANGE_OPTIONS: readonly { key: ChartRangePreset; label: string }[] = [
   { key: '1d', label: '24h' },
   { key: '7d', label: '7d' },
@@ -36,7 +42,10 @@ const RANGE_OPTIONS: readonly { key: ChartRangePreset; label: string }[] = [
 ] as const;
 
 const CHART_HEIGHT = 270;
-const CHART_PADDING = { top: 20, right: 16, bottom: 34, left: 56 } as const;
+const CHART_PADDING = { top: 20, right: 16, bottom: 54, left: 56 } as const;
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
 
 /**
  * Renders a responsive line chart for detail history with adaptive time-axis formatting.
@@ -102,8 +111,8 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
     if (!chartBounds) {
       return [];
     }
-    const tickAmount = clamp(Math.floor(innerRect.width / 110), 2, 9);
-    return createTicks(chartBounds.minX, chartBounds.maxX, tickAmount);
+    const targetTickAmount = clamp(Math.floor(innerRect.width / 86), 3, 12);
+    return createTimeTicks(chartBounds.minX, chartBounds.maxX, targetTickAmount);
   }, [chartBounds, innerRect.width]);
 
   const yTicks = useMemo((): number[] => {
@@ -111,38 +120,63 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
       return [];
     }
     const maxTickAmount = clamp(Math.floor(innerRect.height / 48), 3, 8);
-    return createNiceYAxisTicks(chartBounds.minY, chartBounds.maxY, maxTickAmount);
+    return createNiceYAxisScale(chartBounds.minY, chartBounds.maxY, maxTickAmount).ticks;
   }, [chartBounds, innerRect.height]);
 
+  const yScaleBounds = useMemo((): Pick<ChartBounds, 'minY' | 'maxY'> | null => {
+    if (!chartBounds) {
+      return null;
+    }
+    const maxTickAmount = clamp(Math.floor(innerRect.height / 48), 3, 8);
+    const niceScale = createNiceYAxisScale(chartBounds.minY, chartBounds.maxY, maxTickAmount);
+    return {
+      minY: niceScale.min,
+      maxY: niceScale.max,
+    };
+  }, [chartBounds, innerRect.height]);
+
+  const renderBounds = useMemo((): ChartBounds | null => {
+    if (!chartBounds || !yScaleBounds) {
+      return null;
+    }
+
+    return {
+      minX: chartBounds.minX,
+      maxX: chartBounds.maxX,
+      minY: yScaleBounds.minY,
+      maxY: yScaleBounds.maxY,
+    };
+  }, [chartBounds, yScaleBounds]);
+
   const linePath = useMemo((): string => {
-    if (!chartBounds || filteredPoints.length === 0) {
+    if (!renderBounds || filteredPoints.length === 0) {
       return '';
     }
-    return buildLinePath(filteredPoints, chartBounds, innerRect);
-  }, [chartBounds, filteredPoints, innerRect]);
+    return buildLinePath(filteredPoints, renderBounds, innerRect);
+  }, [filteredPoints, innerRect, renderBounds]);
 
   const areaPath = useMemo((): string => {
-    if (!chartBounds || filteredPoints.length === 0) {
+    if (!renderBounds || filteredPoints.length === 0) {
       return '';
     }
-    return buildAreaPath(filteredPoints, chartBounds, innerRect);
-  }, [chartBounds, filteredPoints, innerRect]);
+    return buildAreaPath(filteredPoints, renderBounds, innerRect);
+  }, [filteredPoints, innerRect, renderBounds]);
 
   /**
    * Tracks pointer movement and snaps tooltip to nearest sample.
    * @param event Pointer move event.
    */
   function handleMouseMove(event: ReactMouseEvent<SVGRectElement>): void {
-    if (!chartBounds || filteredPoints.length === 0) {
+    if (!renderBounds || filteredPoints.length === 0) {
       return;
     }
 
     const targetRect = event.currentTarget.getBoundingClientRect();
     const pointerX = event.clientX - targetRect.left;
     const clampedX = clamp(pointerX, 0, innerRect.width);
-    const nearest = findNearestPoint(filteredPoints, chartBounds, innerRect, clampedX);
+    const nearest = findNearestPoint(filteredPoints, renderBounds, innerRect, clampedX);
     setHoveredPoint(nearest);
-    setHoverX(scaleX(nearest.timestampMs, chartBounds, innerRect));
+    setHoverX(scaleX(nearest.timestampMs, renderBounds, innerRect));
   }
 
   /**
@@ -213,7 +247,7 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
               <rect x={0} y={0} width={innerRect.width} height={innerRect.height} className="detail-line-chart-plot-bg" />
 
               {yTicks.map((tickValue): JSX.Element => {
-                const y = scaleY(tickValue, chartBounds, innerRect);
+                const y = scaleY(tickValue, renderBounds, innerRect);
                 return (
                   <g key={`y-${String(tickValue)}`}>
                     <line className="detail-line-chart-grid" x1={0} x2={innerRect.width} y1={y} y2={y} />
@@ -226,12 +260,25 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
 
               {xTicks.map((tickValue): JSX.Element => {
                 const x = scaleX(tickValue, chartBounds, innerRect);
+                const label = formatXAxisLabelParts(tickValue, xSpanMs);
+                const skipLabelAtOrigin = x <= 10;
+                const textX = x <= 18 ? x + 4 : x;
+                const anchor: 'start' | 'middle' = x <= 18 ? 'start' : 'middle';
                 return (
                   <g key={`x-${String(tickValue)}`}>
                     <line className="detail-line-chart-grid detail-line-chart-grid-x" x1={x} x2={x} y1={0} y2={innerRect.height} />
-                    <text className="detail-line-chart-axis-text" x={x} y={innerRect.height + 18} textAnchor="middle">
-                      {formatXAxisLabel(tickValue, xSpanMs)}
-                    </text>
+                    {skipLabelAtOrigin ? null : (
+                      <text className="detail-line-chart-axis-text" x={textX} y={innerRect.height + 14} textAnchor={anchor}>
+                        <tspan x={textX} dy={0}>
+                          {label.timeOrPrimary}
+                        </tspan>
+                        {label.dateOrSecondary.length > 0 ? (
+                          <tspan x={textX} dy={11}>
+                            {label.dateOrSecondary}
+                          </tspan>
+                        ) : null}
+                      </text>
+                    )}
                   </g>
                 );
               })}
@@ -245,8 +292,8 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
                       <circle
                         key={`${String(point.timestampMs)}-${String(point.value)}-${String(index)}`}
                         className="detail-line-chart-point"
-                        cx={scaleX(point.timestampMs, chartBounds, innerRect)}
-                        cy={scaleY(point.value, chartBounds, innerRect)}
+                        cx={scaleX(point.timestampMs, renderBounds, innerRect)}
+                        cy={scaleY(point.value, renderBounds, innerRect)}
                         r={pointRadius}
                       />
                     );
@@ -259,7 +306,7 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
                   <circle
                     className="detail-line-chart-hover-point"
                     cx={hoverX}
-                    cy={scaleY(hoveredPoint.value, chartBounds, innerRect)}
+                    cy={scaleY(hoveredPoint.value, renderBounds, innerRect)}
                     r={4}
                   />
                 </>
@@ -448,9 +495,13 @@ function calculateBounds(points: ChartPoint[]): ChartBounds | null {
  * @param maxTickAmount Upper bound for tick amount based on available chart height.
  * @returns {number[]} Rounded Y-axis ticks.
  */
-function createNiceYAxisTicks(minValue: number, maxValue: number, maxTickAmount: number): number[] {
+function createNiceYAxisScale(minValue: number, maxValue: number, maxTickAmount: number): NiceYAxisScale {
   if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
-    return [];
+    return {
+      ticks: [],
+      min: minValue,
+      max: maxValue,
+    };
   }
 
   const safeMaxTickAmount = Math.max(3, maxTickAmount);
@@ -459,7 +510,12 @@ function createNiceYAxisTicks(minValue: number, maxValue: number, maxTickAmount:
   if (span < Number.EPSILON) {
     const absoluteValue = Math.abs(minValue);
     const fallbackStep = absoluteValue > 0 ? niceNumber(absoluteValue * 0.25, true) : 1;
-    return [minValue - fallbackStep, minValue, minValue + fallbackStep];
+    const ticks = [minValue - fallbackStep, minValue, minValue + fallbackStep];
+    return {
+      ticks,
+      min: minValue - fallbackStep * 1.15,
+      max: minValue + fallbackStep * 1.2,
+    };
   }
 
   const roughStep = span / (safeMaxTickAmount - 1);
@@ -477,10 +533,17 @@ function createNiceYAxisTicks(minValue: number, maxValue: number, maxTickAmount:
     loopCounter += 1;
   }
 
-  if (ticks.length >= 2) {
-    return ticks;
-  }
-  return [niceMin, niceMax];
+  const safeTicks = ticks.length >= 2 ? ticks : [niceMin, niceMax];
+  const firstTick = safeTicks[0] ?? niceMin;
+  const lastTick = safeTicks[safeTicks.length - 1] ?? niceMax;
+  const secondTick = safeTicks[1];
+  const step = secondTick !== undefined ? Math.abs(secondTick - firstTick) : Math.abs(niceStep);
+
+  return {
+    ticks: safeTicks,
+    min: firstTick - step * 0.08,
+    max: lastTick + step * 0.18,
+  };
 }
 
 /**
@@ -599,28 +662,110 @@ function scaleY(value: number, bounds: ChartBounds, rect: ChartRect): number {
 }
 
 /**
- * Generates evenly spaced ticks for an axis.
- * @param minValue Axis minimum value.
- * @param maxValue Axis maximum value.
- * @param amount Desired amount of ticks.
- * @returns {number[]} Tick positions.
+ * Builds rounded and calendar-aligned X-axis ticks for time-based data.
+ * @param minTimestampMs Visible minimum timestamp.
+ * @param maxTimestampMs Visible maximum timestamp.
+ * @param targetAmount Desired approximate amount of ticks.
+ * @returns {number[]} Calendar-aligned tick timestamps.
  */
-function createTicks(minValue: number, maxValue: number, amount: number): number[] {
-  if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+function createTimeTicks(minTimestampMs: number, maxTimestampMs: number, targetAmount: number): number[] {
+  if (!Number.isFinite(minTimestampMs) || !Number.isFinite(maxTimestampMs)) {
     return [];
   }
 
-  if (Math.abs(maxValue - minValue) < 0.000001) {
-    return [minValue];
+  const spanMs = Math.max(1, maxTimestampMs - minTimestampMs);
+  const safeTargetAmount = Math.max(2, targetAmount);
+  const desiredStep = spanMs / (safeTargetAmount - 1);
+  const stepMs = chooseTimeStepMs(desiredStep);
+  const firstTick = alignTimestampToStep(minTimestampMs, stepMs);
+
+  const ticks: number[] = [];
+  const maxLoopCount = 512;
+  let cursor = firstTick;
+  let loopCounter = 0;
+  while (cursor <= maxTimestampMs + stepMs * 0.25 && loopCounter < maxLoopCount) {
+    if (cursor >= minTimestampMs - stepMs * 0.1) {
+      ticks.push(cursor);
+    }
+    cursor += stepMs;
+    loopCounter += 1;
   }
 
-  const safeAmount = Math.max(2, amount);
-  const step = (maxValue - minValue) / (safeAmount - 1);
-  const result: number[] = [];
-  for (let index = 0; index < safeAmount; index += 1) {
-    result.push(minValue + step * index);
+  if (ticks.length >= 2) {
+    return ticks;
   }
-  return result;
+
+  return [minTimestampMs, maxTimestampMs];
+}
+
+/**
+ * Chooses a rounded step size for time ticks based on desired spacing.
+ * @param desiredStepMs Raw desired step size in milliseconds.
+ * @returns {number} Rounded step size in milliseconds.
+ */
+function chooseTimeStepMs(desiredStepMs: number): number {
+  const candidates: readonly number[] = [
+    MINUTE_MS,
+    2 * MINUTE_MS,
+    5 * MINUTE_MS,
+    10 * MINUTE_MS,
+    15 * MINUTE_MS,
+    30 * MINUTE_MS,
+    HOUR_MS,
+    2 * HOUR_MS,
+    3 * HOUR_MS,
+    6 * HOUR_MS,
+    12 * HOUR_MS,
+    DAY_MS,
+    2 * DAY_MS,
+    7 * DAY_MS,
+    14 * DAY_MS,
+    30 * DAY_MS,
+    90 * DAY_MS,
+    180 * DAY_MS,
+    365 * DAY_MS,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate >= desiredStepMs) {
+      return candidate;
+    }
+  }
+  return candidates[candidates.length - 1] ?? 365 * DAY_MS;
+}
+
+/**
+ * Aligns timestamp to the next rounded boundary for the selected step.
+ * @param timestampMs Timestamp to align.
+ * @param stepMs Time-step size in milliseconds.
+ * @returns {number} Rounded timestamp boundary.
+ */
+function alignTimestampToStep(timestampMs: number, stepMs: number): number {
+  const date = new Date(timestampMs);
+  const alignedDate = new Date(date.getTime());
+
+  if (stepMs < HOUR_MS) {
+    alignedDate.setSeconds(0, 0);
+    const minuteStep = Math.max(1, Math.floor(stepMs / MINUTE_MS));
+    const nextMinute = Math.ceil(alignedDate.getMinutes() / minuteStep) * minuteStep;
+    alignedDate.setMinutes(nextMinute, 0, 0);
+    return alignedDate.getTime();
+  }
+
+  if (stepMs < DAY_MS) {
+    alignedDate.setMinutes(0, 0, 0);
+    const hourStep = Math.max(1, Math.floor(stepMs / HOUR_MS));
+    const nextHour = Math.ceil(alignedDate.getHours() / hourStep) * hourStep;
+    alignedDate.setHours(nextHour, 0, 0, 0);
+    return alignedDate.getTime();
+  }
+
+  alignedDate.setHours(0, 0, 0, 0);
+  const dayStep = Math.max(1, Math.floor(stepMs / DAY_MS));
+  const dayOfMonth = alignedDate.getDate();
+  const nextDayOffset = (Math.ceil(dayOfMonth / dayStep) * dayStep - dayOfMonth) % dayStep;
+  alignedDate.setDate(dayOfMonth + nextDayOffset);
+  return alignedDate.getTime();
 }
 
 /**
@@ -658,26 +803,36 @@ function findNearestPoint(points: ChartPoint[], bounds: ChartBounds, rect: Chart
  * @param spanMs Current visible span in milliseconds.
  * @returns {string} Formatted tick label.
  */
-function formatXAxisLabel(timestampMs: number, spanMs: number): string {
+function formatXAxisLabelParts(timestampMs: number, spanMs: number): { timeOrPrimary: string; dateOrSecondary: string } {
   const date = new Date(timestampMs);
   if (spanMs <= 6 * 60 * 60 * 1000) {
-    return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    return {
+      timeOrPrimary: date.toLocaleTimeString('de-DE', { hour: 'numeric', minute: '2-digit' }),
+      dateOrSecondary: date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+    };
   }
   if (spanMs <= 3 * 24 * 60 * 60 * 1000) {
-    return date.toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return {
+      timeOrPrimary: date.toLocaleTimeString('de-DE', { hour: 'numeric', minute: '2-digit' }),
+      dateOrSecondary: date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+    };
   }
   if (spanMs <= 90 * 24 * 60 * 60 * 1000) {
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+    return {
+      timeOrPrimary: date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
+      dateOrSecondary: '',
+    };
   }
   if (spanMs <= 730 * 24 * 60 * 60 * 1000) {
-    return date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+    return {
+      timeOrPrimary: date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' }),
+      dateOrSecondary: '',
+    };
   }
-  return date.toLocaleDateString('de-DE', { year: 'numeric' });
+  return {
+    timeOrPrimary: date.toLocaleDateString('de-DE', { year: 'numeric' }),
+    dateOrSecondary: '',
+  };
 }
 
 /**
