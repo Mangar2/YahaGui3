@@ -29,6 +29,11 @@ interface SnackbarState {
  * @returns {JSX.Element} Application root component.
  */
 export default function App(): JSX.Element {
+  const settingsStoreRef = useRef<TopicSettingsStore>(new TopicSettingsStore());
+  const settingsClientRef = useRef<SettingsConfigClient>(
+    new SettingsConfigClient(getConfigStoreBaseUrl(), getConfigStorePath()),
+  );
+
   const {
     topicChunks,
     navItems,
@@ -40,14 +45,10 @@ export default function App(): JSX.Element {
     navigateToDepth,
     selectNavItem,
     publishControlValue,
-  } = useMessagePathController();
+  } = useMessagePathController(settingsStoreRef.current);
   const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
   const [snackbarStack, setSnackbarStack] = useState<SnackbarState[]>([]);
   const snackbarTimeoutsRef = useRef<Map<number, number>>(new Map<number, number>());
-  const settingsStoreRef = useRef<TopicSettingsStore>(new TopicSettingsStore());
-  const settingsClientRef = useRef<SettingsConfigClient>(
-    new SettingsConfigClient(getConfigStoreBaseUrl(), getConfigStorePath()),
-  );
 
   useEffect((): (() => void) => {
     return (): void => {

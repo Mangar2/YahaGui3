@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  buildTopicControlItems,
+  buildTopicControlItemsFromNodes,
   getNewSwitchValue,
   type TopicControlItem,
 } from '../../../domain/messages/controlElementDecisions';
-import { createEmptyMessageTree, getNodeByTopicChunks, replaceManyNodes } from '../../../domain/messages/messageTree';
+import { createEmptyMessageTree, getNodeByTopic, getNodeByTopicChunks, replaceManyNodes } from '../../../domain/messages/messageTree';
 import type { MessageStoreDirectRequest, MessageTreeNode, MessageTopicData } from '../../../domain/messages/interfaces';
 import { joinTopic, splitTopic } from '../../../domain/messages/topicPath';
+import type { TopicSettingsStore } from '../../../domain/settings/interfaces';
 import { MessageStoreClient, MessageStoreClientError } from '../../../infrastructure/messages/messageStoreClient';
 import { MessagePublishClient, MessagePublishClientError } from '../../../infrastructure/messages/messagePublishClient';
 import {
@@ -41,9 +42,10 @@ const OVERVIEW_INCLUDE_REASON = false;
 
 /**
  * Controls loading and refreshing the currently active message path.
+ * @param settingsStore Shared settings store with localStorage-backed configuration state.
  * @returns {MessagePathControllerState} Reactive state for breadcrumb path and topic loading.
  */
-export function useMessagePathController(): MessagePathControllerState {
+export function useMessagePathController(settingsStore: TopicSettingsStore): MessagePathControllerState {
   const [topic, setTopic] = useTopicQueryState();
   const topicChunks = useMemo((): string[] => splitTopic(topic), [topic]);
 
@@ -78,9 +80,7 @@ export function useMessagePathController(): MessagePathControllerState {
     return buildNavItems(topicChunks, activeNode);
   }, [topicChunks, activeNode]);
 
-  const controlItems = useMemo((): TopicControlItem[] => {
-    return buildTopicControlItems(activeNode, topicChunks);
-  }, [activeNode, topicChunks]);
+  const controlItems = buildConfiguredControlItems(messageTree, activeNode, topicChunks, settingsStore);
 
   useEffect((): void => {
     topicChunksRef.current = topicChunks;
@@ -250,6 +250,53 @@ export function useMessagePathController(): MessagePathControllerState {
     selectNavItem,
     publishControlValue,
   };
+}
+
+/**
+ * Builds overview control items with legacy settings behavior:
+ * - direct child controls filtered by node-enabled flags
+ * - additional controls selected by topicRank and descendant depth
+ * @param messageTree Full message tree.
+ * @param activeNode Active tree node.
+ * @param topicChunks Current topic path chunks.
+ * @param settingsStore Shared settings store.
+ * @returns {TopicControlItem[]} Final control item list.
+ */
+function buildConfiguredControlItems(
+  messageTree: MessageTreeNode,
+  activeNode: MessageTreeNode | null,
+  topicChunks: string[],
+  settingsStore: TopicSettingsStore,
+): TopicControlItem[] {
+  if (!activeNode) {
+    return [];
+  }
+
+  const selectedNodes: MessageTreeNode[] = [];
+  const topic = joinTopic(topicChunks);
+  const additionalTopics = settingsStore.getAdditionalTopics(topic, topicChunks.length + 1);
+  for (const additionalTopic of additionalTopics) {
+    const candidateNode = getNodeByTopic(messageTree, additionalTopic);
+    if (candidateNode && typeof candidateNode.topic === 'string' && candidateNode.topic.length > 0) {
+      selectedNodes.push(candidateNode);
+    }
+  }
+
+  const nodeSettings = settingsStore.getNavSettings(topicChunks);
+  const childNodes = activeNode.childs;
+  if (childNodes) {
+    for (const [topicChunk, childNode] of Object.entries(childNodes)) {
+      if (topicChunk === 'set') {
+        continue;
+      }
+      if (!nodeSettings.isEnabled(topicChunk)) {
+        continue;
+      }
+      selectedNodes.push(childNode);
+    }
+  }
+
+  return buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore);
 }
 
 /**

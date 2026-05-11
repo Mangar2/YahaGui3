@@ -412,6 +412,23 @@ export class TopicSettingsStore {
   }
 
   /**
+   * Returns configured additional topics for the current navigation position.
+   * Legacy behavior: descendants except direct childs are shown when topicRank <= level.
+   * @param topic Current topic path.
+   * @param level Current navigation level.
+   * @returns {string[]} Additional topic list.
+   */
+  public getAdditionalTopics(topic: string, level: number): string[] {
+    const result: string[] = [];
+    for (const [currentTopic, navSetting] of Object.entries(this.navSettingsStore)) {
+      if (this.isDescendantButNotChild(topic, currentTopic) && navSetting.getTopicRank() <= level) {
+        result.push(currentTopic);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Writes reduced settings payload into localStorage.
    */
   public writeToLocalStore(): void {
@@ -437,6 +454,22 @@ export class TopicSettingsStore {
   }
 
   /**
+   * Checks whether descendantTopic is a descendant of topic, but not a direct child.
+   * @param topic Base topic.
+   * @param descendantTopic Candidate descendant topic.
+   * @returns {boolean} True when topic relation matches the legacy rules.
+   */
+  private isDescendantButNotChild(topic: string, descendantTopic: string): boolean {
+    let result = descendantTopic.startsWith(topic);
+    if (result) {
+      const topicLevel = topic === '' ? 0 : topic.split('/').length;
+      const isChild = topicLevel + 1 === descendantTopic.split('/').length;
+      result = !isChild;
+    }
+    return result;
+  }
+
+  /**
    * Loads settings from localStorage and validates payload shape.
    */
   private getFromLocalStore(): void {
@@ -452,7 +485,7 @@ export class TopicSettingsStore {
       }
 
       for (const [topic, payload] of Object.entries(parsedPayload)) {
-        if (typeof topic !== 'string' || !isRecord(payload)) {
+        if (!isRecord(payload)) {
           continue;
         }
         this.navSettingsStore[topic] = TopicNavSettings.fromPayload(payload);

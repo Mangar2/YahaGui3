@@ -31,6 +31,16 @@ export function getNodeByTopicChunks(tree: MessageTreeNode, topicChunks: string[
 }
 
 /**
+ * Returns a node by full topic path.
+ * @param tree Message tree root node.
+ * @param topic Full topic path.
+ * @returns {MessageTreeNode | null} Matching node or null.
+ */
+export function getNodeByTopic(tree: MessageTreeNode, topic: string): MessageTreeNode | null {
+  return getNodeByTopicChunks(tree, splitTopic(topic));
+}
+
+/**
  * Replaces many nodes in immutable fashion.
  * @param tree Current tree root.
  * @param payload Topic data payload from backend.

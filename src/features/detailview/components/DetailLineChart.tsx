@@ -405,12 +405,33 @@ function parseNumericValue(value: MessageScalar | undefined): number | null {
     return value ? 1 : 0;
   }
   if (typeof value === 'string') {
-    const normalizedValue = value.trim().replace(',', '.');
-    if (normalizedValue.length === 0) {
+    const normalizedValue = value.trim().toLowerCase();
+    const switchLikeValue = parseSwitchLikeNumericValue(normalizedValue);
+    if (switchLikeValue !== null) {
+      return switchLikeValue;
+    }
+
+    const normalizedNumberValue = normalizedValue.replace(',', '.');
+    if (normalizedNumberValue.length === 0) {
       return null;
     }
-    const numericValue = Number(normalizedValue);
+    const numericValue = Number(normalizedNumberValue);
     return Number.isFinite(numericValue) ? numericValue : null;
+  }
+  return null;
+}
+
+/**
+ * Converts common switch-like string values to 1/0.
+ * @param normalizedValue Lower-case trimmed value text.
+ * @returns {number | null} 1 or 0 for known switch states, otherwise null.
+ */
+function parseSwitchLikeNumericValue(normalizedValue: string): number | null {
+  if (normalizedValue === 'on' || normalizedValue === 'true' || normalizedValue === 'open' || normalizedValue === 'up') {
+    return 1;
+  }
+  if (normalizedValue === 'off' || normalizedValue === 'false' || normalizedValue === 'closed' || normalizedValue === 'down') {
+    return 0;
   }
   return null;
 }

@@ -1,16 +1,8 @@
 import type { MessageScalar, MessageTreeNode } from './interfaces';
 import { splitTopic } from './topicPath';
+import type { TopicSettingsStore } from '../settings/interfaces';
 
-export type ControlIconKind =
-  | 'light'
-  | 'temperature'
-  | 'humidity'
-  | 'pressure'
-  | 'roller'
-  | 'window'
-  | 'camera'
-  | 'switch'
-  | 'default';
+export type ControlIconAsset = string | null;
 
 export interface TopicControlItem {
   topic: string;
@@ -20,7 +12,7 @@ export interface TopicControlItem {
   topicType: string;
   isSwitch: boolean;
   isSwitchOn: boolean;
-  iconKind: ControlIconKind;
+  iconAsset: ControlIconAsset;
 }
 
 const TYPE_IDENTIFIER: Record<string, string> = {
@@ -41,33 +33,39 @@ const UNIT_IDENTIFIER: Record<string, string> = {
 };
 
 const SWITCH_TOPIC_TYPES: ReadonlySet<string> = new Set<string>(['Roller', 'Light', 'Switch']);
-const ICON_KEYWORD_MAP: { keyword: string; iconKind: ControlIconKind }[] = [
-  { keyword: 'temperature', iconKind: 'temperature' },
-  { keyword: 'humidity', iconKind: 'humidity' },
-  { keyword: 'pressure', iconKind: 'pressure' },
-  { keyword: 'light', iconKind: 'light' },
-  { keyword: 'roller', iconKind: 'roller' },
-  { keyword: 'window', iconKind: 'window' },
-  { keyword: 'camera', iconKind: 'camera' },
-];
-const ICON_TOPIC_TYPE_MAP: Record<string, ControlIconKind> = {
-  Temperature: 'temperature',
-  Humidity: 'humidity',
-  'Air Pressure': 'pressure',
-  Light: 'light',
-  Roller: 'roller',
-  Window: 'window',
-  Camera: 'camera',
-  Switch: 'switch',
+const ICONS: Record<string, string | string[]> = {
+  Camera: 'camera_indoor_FILL0_wght400_GRAD0_opsz48.png',
+  Charge: 'charger_FILL0_wght400_GRAD0_opsz48.png',
+  Humidity: 'humidity_percentage_FILL0_wght400_GRAD0_opsz48.png',
+  Light: 'lightbulb_FILL0_wght400_GRAD0_opsz48.png',
+  Pressure: 'air_pressure.png',
+  Temperature: 'device_thermostat_FILL0_wght400_GRAD0_opsz48.png',
+  TV: 'tv_gen_FILL0_wght400_GRAD0_opsz48.png',
+  Ventilation: 'ventilation.png',
+  Window: 'window.png',
+  Roller: ['roller_closed.png', 'roller_open.png'],
+  Multimedia: 'multimedia.png',
+  Presence: 'home_pin_FILL0_wght400_GRAD0_opsz48.png',
+  Print: 'print_FILL0_wght400_GRAD0_opsz48.png',
+  PC: 'computer_FILL0_wght400_GRAD0_opsz48.png',
+  Dishwasher: 'dishwasher_gen_FILL0_wght400_GRAD0_opsz48.png',
+  Fridge: 'kitchen_FILL0_wght400_GRAD0_opsz48.png',
+  // Extension to provide explicit fallback for configured switch topics.
+  Switch: 'lightbulb_FILL0_wght400_GRAD0_opsz48.png',
 };
 
 /**
  * Builds the right-side control items for the active overview node.
  * @param activeNode Currently selected message tree node.
  * @param topicChunks Current topic path chunks from the URL.
+ * @param settingsStore Settings store used to read topic-specific icon configuration.
  * @returns {TopicControlItem[]} Sorted topic controls with icon, label and value metadata.
  */
-export function buildTopicControlItems(activeNode: MessageTreeNode | null, topicChunks: string[]): TopicControlItem[] {
+export function buildTopicControlItems(
+  activeNode: MessageTreeNode | null,
+  topicChunks: string[],
+  settingsStore?: TopicSettingsStore,
+): TopicControlItem[] {
   if (!activeNode) {
     return [];
   }
@@ -82,12 +80,38 @@ export function buildTopicControlItems(activeNode: MessageTreeNode | null, topic
       continue;
     }
 
-    items.push(buildControlItem(childNode, topicChunks));
+    items.push(buildControlItem(childNode, topicChunks, settingsStore));
   }
 
   // Legacy parity: if a node only exposes a "set" child, show the current node itself as control element.
   if (items.length === 0 && shouldRenderCurrentNodeAsControl(activeNode, topicChunks)) {
-    items.push(buildControlItem(activeNode, topicChunks));
+    items.push(buildControlItem(activeNode, topicChunks, settingsStore));
+  }
+
+  return buildTopicControlItemsFromNodes(items, topicChunks, settingsStore);
+}
+
+/**
+ * Builds sorted control items from a preselected node list.
+ * @param nodes Selected tree nodes that should be shown as controls.
+ * @param topicChunks Current topic path chunks from the URL.
+ * @param settingsStore Settings store used to read topic-specific icon configuration.
+ * @returns {TopicControlItem[]} Sorted topic controls with icon, label and value metadata.
+ */
+export function buildTopicControlItemsFromNodes(
+  nodes: MessageTreeNode[],
+  topicChunks: string[],
+  settingsStore?: TopicSettingsStore,
+): TopicControlItem[] {
+  const items: TopicControlItem[] = [];
+  for (const node of nodes) {
+    if (typeof node.topic !== 'string' || node.topic.length === 0 || node.value === undefined) {
+      continue;
+    }
+    if (splitTopic(node.topic).at(-1) === 'set') {
+      continue;
+    }
+    items.push(buildControlItem(node, topicChunks, settingsStore));
   }
 
   return sortControlItems(items);
@@ -97,14 +121,20 @@ export function buildTopicControlItems(activeNode: MessageTreeNode | null, topic
  * Builds one control item from a tree node.
  * @param node Source tree node.
  * @param topicChunks Current topic path chunks from the URL.
+ * @param settingsStore Settings store used to read topic-specific icon configuration.
  * @returns {TopicControlItem} Control item metadata.
  */
-function buildControlItem(node: MessageTreeNode, topicChunks: string[]): TopicControlItem {
+function buildControlItem(
+  node: MessageTreeNode,
+  topicChunks: string[],
+  settingsStore?: TopicSettingsStore,
+): TopicControlItem {
   const topic = node.topic ?? '';
   const value = node.value ?? null;
   const topicType = decideTopicType(topic, value);
   const isSwitch = isSwitchType(topicType, value);
   const isSwitchOn = isSwitchOnValue(topicType, value);
+  const iconName = getConfiguredIconName(topic, settingsStore);
 
   return {
     topic,
@@ -114,7 +144,7 @@ function buildControlItem(node: MessageTreeNode, topicChunks: string[]): TopicCo
     topicType,
     isSwitch,
     isSwitchOn,
-    iconKind: decideIconKind(topic, topicType),
+    iconAsset: decideIconAsset(iconName, topic, String(value ?? '')),
   };
 }
 
@@ -253,23 +283,70 @@ function isSwitchLikeValue(value: MessageScalar): boolean {
 }
 
 /**
- * Decides an icon kind based on topic and type.
+ * Returns configured icon name for a topic or legacy automatic fallback.
  * @param topic Full topic path.
- * @param topicType Decided type.
- * @returns {ControlIconKind} Icon choice for rendering.
+ * @param settingsStore Optional settings store.
+ * @returns {string} Configured icon name or "Automatic".
  */
-function decideIconKind(topic: string, topicType: string): ControlIconKind {
-  const iconByType = ICON_TOPIC_TYPE_MAP[topicType];
-  if (iconByType) {
-    return iconByType;
+function getConfiguredIconName(topic: string, settingsStore?: TopicSettingsStore): string {
+  if (!settingsStore || topic.length === 0) {
+    return 'Automatic';
   }
 
-  const topicLower = topic.toLowerCase();
-  for (const iconEntry of ICON_KEYWORD_MAP) {
-    if (topicLower.includes(iconEntry.keyword)) {
-      return iconEntry.iconKind;
+  const topicChunks = splitTopic(topic);
+  return settingsStore.getNavSettings(topicChunks).getIconName();
+}
+
+/**
+ * Decides an icon asset filename based on the legacy priority rules.
+ * Priority: configured icon name, then last topic chunk match, then full topic match.
+ * @param iconName Configured icon name from topic settings.
+ * @param topic Full topic path.
+ * @param topicValue Current topic value as string.
+ * @returns {ControlIconAsset} Icon asset filename relative to /assets, or null when not resolvable.
+ */
+function decideIconAsset(iconName: string, topic: string, topicValue: string): ControlIconAsset {
+  const normalizedIconName = iconName.trim();
+  let pictures: string | string[] | null = null;
+
+  if (normalizedIconName.length > 0 && normalizedIconName !== 'Automatic') {
+    pictures = ICONS[normalizedIconName] ?? null;
+  }
+
+  // Legacy order: check final topic chunk before full topic path.
+  const lastChunk = splitTopic(topic).at(-1) ?? '';
+  const checkStrings = [lastChunk, topic];
+  for (const checkString of checkStrings) {
+    if (pictures !== null) {
+      break;
+    }
+
+    const normalizedCheck = checkString.toLowerCase();
+    for (const [pictureName, pictureValue] of Object.entries(ICONS)) {
+      if (normalizedCheck.includes(pictureName.toLowerCase())) {
+        pictures = pictureValue;
+        break;
+      }
     }
   }
 
-  return 'default';
+  if (pictures === null) {
+    return null;
+  }
+
+  if (!Array.isArray(pictures)) {
+    return pictures;
+  }
+
+  const topicValueLower = topicValue.toLowerCase();
+  const showOnIcon =
+    topicValueLower !== 'off' &&
+    topicValueLower !== 'down' &&
+    topicValueLower !== '0' &&
+    topicValueLower !== 'closed';
+  if (showOnIcon && pictures[1]) {
+    return pictures[1];
+  }
+
+  return pictures[0] ?? null;
 }
