@@ -227,7 +227,7 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
       <p className="detail-line-chart-summary">{rangeSummary}</p>
 
       <div className="detail-line-chart-canvas" ref={containerRef}>
-        {filteredPoints.length === 0 ? (
+        {filteredPoints.length === 0 || renderBounds === null || chartBounds === null ? (
           <p className="detail-line-chart-empty">Keine numerischen Verlaufspunkte verfuegbar.</p>
         ) : (
           <svg
@@ -349,9 +349,9 @@ function buildChartPoints(activeNode: MessageTreeNode | null): ChartPoint[] {
 
   const result: ChartPoint[] = [];
   const headEntry: MessageHistoryEntry = {
-    time: activeNode.time,
-    value: activeNode.value,
-    reason: activeNode.reason,
+    ...(activeNode.time !== undefined && { time: activeNode.time }),
+    ...(activeNode.value !== undefined && { value: activeNode.value }),
+    ...(activeNode.reason !== undefined && { reason: activeNode.reason }),
   };
   pushChartPoint(result, headEntry);
 

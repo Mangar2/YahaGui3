@@ -196,7 +196,7 @@ export class RuleTreeStore {
       if (current.childs?.[path.name] === undefined) {
         return null;
       }
-      return current.childs[path.name];
+      return current.childs[path.name] ?? null;
     }
 
     return current;

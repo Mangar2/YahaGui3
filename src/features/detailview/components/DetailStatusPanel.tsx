@@ -279,12 +279,8 @@ function isSwitchOn(topicValue: string, topicType: string, valueType: string, en
       if (valueType !== 'Enumeration') {
         return loweredValue.length > 0;
       }
-      for (let index = 1; index < enumList.length; index += 1) {
-        if (loweredValue === enumList[index].toLowerCase()) {
-          return false;
-        }
-      }
-      return true;
+      const isOffState = enumList.slice(1).some((entry: string): boolean => loweredValue === entry.toLowerCase());
+      return !isOffState;
     }
     default:
       return false;

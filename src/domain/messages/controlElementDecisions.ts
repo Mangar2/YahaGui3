@@ -70,7 +70,7 @@ export function buildTopicControlItems(
     return [];
   }
 
-  const items: TopicControlItem[] = [];
+  const nodes: MessageTreeNode[] = [];
   const childNodes = activeNode.childs ? Object.values(activeNode.childs) : [];
   for (const childNode of childNodes) {
     if (typeof childNode.topic !== 'string' || childNode.topic.length === 0 || childNode.value === undefined) {
@@ -80,15 +80,15 @@ export function buildTopicControlItems(
       continue;
     }
 
-    items.push(buildControlItem(childNode, topicChunks, settingsStore));
+    nodes.push(childNode);
   }
 
   // Legacy parity: if a node only exposes a "set" child, show the current node itself as control element.
-  if (items.length === 0 && shouldRenderCurrentNodeAsControl(activeNode, topicChunks)) {
-    items.push(buildControlItem(activeNode, topicChunks, settingsStore));
+  if (nodes.length === 0 && shouldRenderCurrentNodeAsControl(activeNode, topicChunks)) {
+    nodes.push(activeNode);
   }
 
-  return buildTopicControlItemsFromNodes(items, topicChunks, settingsStore);
+  return buildTopicControlItemsFromNodes(nodes, topicChunks, settingsStore);
 }
 
 /**

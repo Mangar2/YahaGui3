@@ -29,9 +29,9 @@ export function DetailValueTable(props: DetailValueTableProps): JSX.Element {
     }
 
     const currentRow: DetailHistoryRow = {
-      time: activeNode.time,
-      value: activeNode.value,
-      reason: activeNode.reason,
+      ...(activeNode.time !== undefined && { time: activeNode.time }),
+      ...(activeNode.value !== undefined && { value: activeNode.value }),
+      ...(activeNode.reason !== undefined && { reason: activeNode.reason }),
     };
 
     const historyRows: MessageHistoryEntry[] = Array.isArray(activeNode.history) ? activeNode.history : [];

@@ -94,7 +94,7 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
     consecutivePostFailuresRef.current = consecutivePostFailures;
   }, [consecutivePostFailures]);
 
-  useEffect((): void => {
+  useEffect((): (() => void) => {
     let cancelled = false;
 
     /**
@@ -405,10 +405,10 @@ function collectTopicSnapshotNodes(node: MessageTreeNode, result: MessageTopicDa
   if (typeof node.topic === 'string' && node.topic.length > 0) {
     result.push({
       topic: node.topic,
-      value: node.value,
-      time: node.time,
-      reason: node.reason,
-      history: node.history,
+      ...(node.value !== undefined && { value: node.value }),
+      ...(node.time !== undefined && { time: node.time }),
+      ...(node.reason !== undefined && { reason: node.reason }),
+      ...(node.history !== undefined && { history: node.history }),
     });
   }
 
