@@ -1,6 +1,7 @@
 /**
  * HTTP/File-store client for loading and saving automation rules.
- * Rules are stored as JSON in the file store.
+ * Rules are stored as JSON in the file store with rules organized in nested objects.
+ * Per SPEC-automation: the "rules" property contains an object of rule key-value pairs.
  */
 
 import type { Rule, RulesExternalFormat, RuleTreeNode, RulesLoadResult } from '../../domain/rules/interfaces';
@@ -23,6 +24,7 @@ export class RulesConfigClient {
   /**
    * Loads automation rules from the configuration file store.
    * Parses the external format and builds the rule tree structure.
+   * Per SPEC-automation: rules are extracted from "rules" properties.
    * @returns {Promise<RulesLoadResult>} Promise resolving to load result with tree and rule count.
    */
   async loadRules(): Promise<RulesLoadResult> {
@@ -31,12 +33,12 @@ export class RulesConfigClient {
       const response = await fetch(url);
 
       if (!response.ok) {
-        const statusText = `HTTP ${response.status}`;
-        throw new Error(`${statusText}: Failed to load rules from ${url}`);
+        const status = String(response.status);
+        throw new Error(`HTTP ${status}: Failed to load rules from ${url}`);
       }
 
       const data: unknown = await response.json();
-      const rulesTree = this.buildRuleTree(data);
+      const rulesTree = this.parseRulesTree(data);
       const ruleCount = this.countRules(rulesTree);
 
       return {
@@ -76,8 +78,8 @@ export class RulesConfigClient {
       });
 
       if (!response.ok) {
-        const statusText = `HTTP ${response.status}`;
-        throw new Error(`${statusText}: Failed to save rules to ${url}`);
+        const status = String(response.status);
+        throw new Error(`HTTP ${status}: Failed to save rules to ${url}`);
       }
 
       return { success: true, error: null };
@@ -106,61 +108,67 @@ export class RulesConfigClient {
   }
 
   /**
-   * Builds a rule tree from external format data.
-   * Recursively processes the nested structure.
-   * @param data External format data.
-   * @param node Current tree node (leave undefined for initial call).
-   * @returns {RuleTreeNode} Built rule tree.
+   * Parses external rules format into a rule tree structure.
+   * Per SPEC-automation: recursively scans for "rules" properties.
+   * The "rules" property contains an object of rule key-value pairs.
+   * @param data Incoming external format data (root level).
+   * @returns {RuleTreeNode} Built rule tree structure.
    */
-  private buildRuleTree(data: unknown, node: RuleTreeNode = {}): RuleTreeNode {
-    if (!isRulesExternalFormat(data)) {
-      return node;
-    }
-
-    const nodeWithChilds: RuleTreeNode = { ...node };
-    nodeWithChilds.childs ??= {};
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key === 'rules') {
-        this.processRulesArray(value, nodeWithChilds);
-      } else if (isRulesExternalFormat(value)) {
-        if (!nodeWithChilds.childs) {
-          nodeWithChilds.childs = {};
-        }
-        nodeWithChilds.childs[key] = {};
-        this.buildRuleTree(value, nodeWithChilds.childs[key]);
-      }
-    }
-
-    return nodeWithChilds;
+  private parseRulesTree(data: unknown): RuleTreeNode {
+    const root: RuleTreeNode = {};
+    this.parseNode(data, root);
+    return root;
   }
 
   /**
-   * Processes an array of rules and adds them to the tree.
-   * @param value Value from rules key.
-   * @param node Parent tree node to add rules to.
+   * Recursively parses a node in the rules hierarchy.
+   * Per SPEC-automation: any property named "rules" contains rule objects.
+   * Other properties are treated as nested organizational containers.
+   * @param data Node data to parse.
+   * @param node Target node to populate.
    */
-  private processRulesArray(value: unknown, node: RuleTreeNode): void {
-    if (!Array.isArray(value)) {
+  private parseNode(data: unknown, node: RuleTreeNode): void {
+    if (!isPlainObject(data)) {
       return;
     }
 
-    for (let i = 0; i < value.length; i++) {
-      const item = value[i];
-      if (isRule(item)) {
-        const ruleName = String(i);
-        if (!node.childs) {
-          node.childs = {};
-        }
-        node.childs[ruleName] = { rule: item };
+    node.childs ??= {};
+
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'rules') {
+        this.extractRulesFromObject(value, node);
+      } else if (isPlainObject(value)) {
+        // Recurse: non-rules objects are organizational containers
+        node.childs[key] = {};
+        this.parseNode(value, node.childs[key]);
       }
     }
   }
 
   /**
-   * Converts a rule tree to external format for file store storage.
-   * @param node Rule tree node to convert.
-   * @returns {RulesExternalFormat} External format representation.
+   * Extracts rule objects from a rules container.
+   * @param value The value to process as rules.
+   * @param node Parent node to add rules to.
+   */
+  private extractRulesFromObject(value: unknown, node: RuleTreeNode): void {
+    if (!isPlainObject(value)) {
+      return;
+    }
+
+    node.childs ??= {};
+
+    for (const [ruleName, ruleData] of Object.entries(value)) {
+      if (isRule(ruleData)) {
+        node.childs[ruleName] = { rule: ruleData };
+      }
+    }
+  }
+
+  /**
+   * Converts a rule tree back to external format for file store.
+   * Per SPEC-automation: reconstructs the nested structure with rules objects.
+   * @param node Rule tree node.
+   * @returns {RulesExternalFormat} External format object.
    */
   private treeToExternalFormat(node: RuleTreeNode): RulesExternalFormat {
     const result: RulesExternalFormat = {};
@@ -169,27 +177,35 @@ export class RulesConfigClient {
       return result;
     }
 
-    const rulesArray: Record<string, unknown>[] = [];
+    const rulesObj: Record<string, Rule> = {};
+    const nestingObj: Record<string, unknown> = {};
 
     for (const [key, childNode] of Object.entries(node.childs)) {
       if (childNode.rule) {
-        // Collect rules in array
-        rulesArray.push(childNode.rule);
+        // Collect actual rules
+        rulesObj[key] = childNode.rule;
       } else if (childNode.childs) {
         // Recurse for nested structures
-        result[key] = this.treeToExternalFormat(childNode);
+        nestingObj[key] = this.treeToExternalFormat(childNode);
       }
     }
 
-    if (rulesArray.length > 0) {
-      result.rules = rulesArray;
+    // Add nested structures first
+    for (const [key, nested] of Object.entries(nestingObj)) {
+      result[key] = nested;
+    }
+
+    // Add rules object last if any rules exist
+    if (Object.keys(rulesObj).length > 0) {
+      result.rules = rulesObj;
     }
 
     return result;
   }
 
   /**
-   * Counts total rules in the tree.
+   * Counts total rules in the tree recursively.
+   * A rule is counted when node.rule is defined.
    * @param node Root node to count from.
    * @returns {number} Total number of rules.
    */
@@ -211,23 +227,26 @@ export class RulesConfigClient {
 }
 
 /**
- * Type guard: checks if value is a Rule object.
+ * Type guard: checks if value is a plain object (not array, null, or primitive).
  * @param value Value to check.
- * @returns {value is Record<string, unknown>} True if value is a Rule.
+ * @returns {value is Record<string, unknown>} True if value is a plain object.
  */
-function isRule(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    ('topic' in value || 'name' in value || 'check' in value || 'value' in value)
-  );
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
- * Type guard: checks if value is external rules format.
+ * Type guard: checks if value is a valid Rule object.
+ * Rules must have at least a "topic" property per SPEC-automation.
  * @param value Value to check.
- * @returns {value is RulesExternalFormat} True if value is external format object.
+ * @returns {value is Rule} True if value is a Rule.
  */
-function isRulesExternalFormat(value: unknown): value is RulesExternalFormat {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function isRule(value: unknown): value is Rule {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  const ruleObj = value;
+  // Per SPEC: mandatory field is "topic"
+  return 'topic' in ruleObj;
 }

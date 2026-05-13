@@ -69,15 +69,105 @@ export interface RuleTreeNode {
 /**
  * External format for rules (from file store).
  * Allows flexible structure for nested organization.
+ * Rules are stored under a "rules" property as key-value pairs.
  */
-export type RulesExternalFormat = Record<string, RulesExternalFormat | Record<string, unknown>>;
+export type RulesExternalFormat = Record<string, unknown>;
 
 /**
  * Path to a rule in the tree structure.
  */
-export interface RulePath {
+export class RulePath {
   chunks: string[];
+
   name: string | null;
+
+  /**
+   * @param chunks Folder chunks before the rule name.
+   * @param name Optional selected rule name.
+   */
+  constructor(chunks: string[] = [], name: string | null = null) {
+    this.chunks = [...chunks];
+    this.name = name;
+  }
+
+  /**
+   * Creates a clone of this path.
+   * @returns {RulePath} Cloned path.
+   */
+  clone(): RulePath {
+    return new RulePath(this.chunks, this.name);
+  }
+
+  /**
+   * True when no folder and no rule are selected.
+   * @returns {boolean} Empty state.
+   */
+  isEmpty(): boolean {
+    return this.chunks.length === 0 && this.name === null;
+  }
+
+  /**
+   * Appends one folder chunk.
+   * @param chunk Folder segment.
+   */
+  push(chunk: string): void {
+    this.chunks.push(chunk);
+  }
+
+  /**
+   * Pops the selected rule name first, then last folder chunk.
+   * @returns {string | undefined} Removed segment.
+   */
+  pop(): string | undefined {
+    if (this.name !== null) {
+      const removedName = this.name;
+      this.name = null;
+      return removedName;
+    }
+
+    return this.chunks.pop();
+  }
+
+  /**
+   * Converts to slash-separated topic path.
+   * @returns {string} Path topic.
+   */
+  toTopic(): string {
+    const folderPath = this.chunks.join('/');
+    if (this.name === null) {
+      return folderPath;
+    }
+
+    if (folderPath.length === 0) {
+      return this.name;
+    }
+
+    return `${folderPath}/${this.name}`;
+  }
+
+  /**
+   * Parses one slash-separated topic path.
+   * @param topic Input topic string.
+   * @returns {RulePath} Parsed path.
+   */
+  static fromTopic(topic: string): RulePath {
+    const trimmed = topic.trim();
+    if (trimmed.length === 0) {
+      return new RulePath();
+    }
+
+    const segments = trimmed
+      .split('/')
+      .map((segment: string): string => segment.trim())
+      .filter((segment: string): boolean => segment.length > 0);
+
+    if (segments.length === 0) {
+      return new RulePath();
+    }
+
+    const name = segments.pop() ?? null;
+    return new RulePath(segments, name);
+  }
 }
 
 /**
