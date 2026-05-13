@@ -1,4 +1,4 @@
-import type { ChangeEvent, JSX, SyntheticEvent } from 'react';
+import { useMemo, useState, type ChangeEvent, type JSX, type SyntheticEvent } from 'react';
 
 interface RulePathEditorProps {
   value: string;
@@ -16,6 +16,10 @@ export function RulePathEditor(props: RulePathEditorProps): JSX.Element {
   const { value, hasSelection, onChange } = props;
   const ruleName = extractRuleName(value);
   const rulePrefix = extractRulePrefix(value);
+  const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
+  const weekdaySummary = useMemo((): string => {
+    return selectedWeekdays.length > 0 ? selectedWeekdays.join(', ') : 'Bitte waehlen';
+  }, [selectedWeekdays]);
 
   return (
     <section className="rfd-editor" aria-label="Rule Detail Editor">
@@ -97,18 +101,43 @@ export function RulePathEditor(props: RulePathEditorProps): JSX.Element {
           <div className="rfd-row">
             <div className="rfd-field rfd-field-large">
               <label className="rfd-label" htmlFor="rfd-time">Time</label>
-              <textarea id="rfd-time" className="rfd-textarea" rows={3} placeholder="z.B. 06:30-08:30" />
+              <textarea id="rfd-time" className="rfd-textarea rfd-textarea-time" rows={3} />
             </div>
             <div className="rfd-field rfd-field-small">
-              <label className="rfd-label" htmlFor="rfd-weekdays">Day of Week</label>
-              <select id="rfd-weekdays" className="rfd-select-multi" multiple size={7} defaultValue={[] as string[]}>
-                <option value="Mon">Mon</option>
-                <option value="Tue">Tue</option>
-                <option value="Wed">Wed</option>
-                <option value="Thu">Thu</option>
-                <option value="Fri">Fri</option>
-                <option value="Sat">Sat</option>
-                <option value="Sun">Sun</option>
+              <span className="rfd-label" id="rfd-weekdays-label">Day of Week</span>
+              <details className="rfd-multi" role="group" aria-labelledby="rfd-weekdays-label">
+                <summary className="rfd-multi-summary">{weekdaySummary}</summary>
+                <div className="rfd-multi-menu" role="listbox" aria-multiselectable="true">
+                  {RFD_WEEKDAY_OPTIONS.map((weekday: string): JSX.Element => {
+                    const isChecked = selectedWeekdays.includes(weekday);
+                    return (
+                      <label key={weekday} className="rfd-multi-option">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>): void => {
+                            if (event.currentTarget.checked) {
+                              setSelectedWeekdays((current: string[]): string[] => [...current, weekday]);
+                              return;
+                            }
+                            setSelectedWeekdays((current: string[]): string[] => {
+                              return current.filter((entry: string): boolean => entry !== weekday);
+                            });
+                          }}
+                        />
+                        <span>{weekday}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </details>
+            </div>
+            <div className="rfd-field rfd-field-qos">
+              <label className="rfd-label" htmlFor="rfd-qos">Quality of Service</label>
+              <select id="rfd-qos" className="rfd-select" defaultValue="0">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
               </select>
             </div>
           </div>
@@ -130,14 +159,6 @@ export function RulePathEditor(props: RulePathEditorProps): JSX.Element {
             <div className="rfd-field rfd-field-small">
               <label className="rfd-label" htmlFor="rfd-mov-dur">Duration w.o. mov. in min.</label>
               <input id="rfd-mov-dur" className="rfd-input" type="text" />
-            </div>
-            <div className="rfd-field rfd-field-small">
-              <label className="rfd-label" htmlFor="rfd-qos">Quality of Service</label>
-              <select id="rfd-qos" className="rfd-select" defaultValue="0">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-              </select>
             </div>
           </div>
 
@@ -178,6 +199,8 @@ const RFD_TEXTAREA_FIELDS: RfdTextareaField[] = [
   { name: 'topic',   label: 'Topic' },
   { name: 'errors',  label: 'Errors', readonly: true },
 ];
+
+const RFD_WEEKDAY_OPTIONS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /**
  * Prevents browser form-submit navigation.

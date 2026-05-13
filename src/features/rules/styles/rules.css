@@ -213,6 +213,10 @@
   flex: 2 1 300px;
 }
 
+.rfd-field-qos {
+  flex: 0 0 130px;
+}
+
 /* matches .rule-textarea: min-width 600px → full width */
 .rfd-field-full {
   flex: 1 0 100%;
@@ -228,8 +232,7 @@
 
 .rfd-input,
 .rfd-textarea,
-.rfd-select,
-.rfd-select-multi {
+.rfd-select {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -253,18 +256,101 @@
   min-height: 2.2rem;
 }
 
-.rfd-select-multi {
-  /* keep 7 visible options at once */
-  min-height: 9rem;
-}
-
 .rfd-input:focus-visible,
 .rfd-textarea:focus-visible,
-.rfd-select:focus-visible,
-.rfd-select-multi:focus-visible {
+.rfd-select:focus-visible {
   outline: 2px solid var(--ui-focus);
   outline-offset: 1px;
   border-color: #93c5fd;
+}
+
+.rfd-multi {
+  position: relative;
+  width: 100%;
+}
+
+.rfd-multi-summary {
+  list-style: none;
+  min-height: 2.2rem;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 34px 6px 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #111827;
+  background: #ffffff;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rfd-multi-summary::-webkit-details-marker {
+  display: none;
+}
+
+.rfd-multi-summary::after {
+  content: '▾';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #4b5563;
+  font-size: 0.8rem;
+}
+
+.rfd-multi[open] .rfd-multi-summary::after {
+  content: '▴';
+}
+
+.rfd-multi-summary:focus-visible,
+.rfd-multi:focus-within .rfd-multi-summary {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 1px;
+  border-color: #93c5fd;
+}
+
+.rfd-multi-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 12rem;
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+  padding: 0.25rem;
+}
+
+.rfd-multi-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.32rem 0.5rem;
+  border-radius: 6px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.rfd-multi-option:hover {
+  background: #f1f5f9;
+}
+
+.rfd-multi-option:has(input:focus-visible) {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 1px;
+}
+
+@media (min-width: 901px) {
+  .rfd-textarea-time {
+    height: 2.2rem;
+    min-height: 2.2rem;
+  }
 }
 
 .rfd-input[readonly],
@@ -386,11 +472,46 @@
 
   .rfd-row {
     flex-direction: column;
+    gap: 8px;
+  }
+
+  .rfd-row-checks {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.45rem;
+    flex-wrap: wrap;
   }
 
   .rfd-header {
     height: auto;
     min-height: 40px;
     flex-wrap: wrap;
+  }
+
+  .rfd-form {
+    gap: 8px;
+  }
+
+  .rfd-editor {
+    padding: 0.75rem;
+  }
+
+  .rfd-field-small,
+  .rfd-field-large,
+  .rfd-field-qos {
+    flex: 1 1 auto;
+  }
+
+  .rfd-field {
+    min-width: 0;
+  }
+
+  .rfd-textarea {
+    min-height: 3.4rem;
+  }
+
+  .rfd-multi-menu {
+    position: static;
+    margin-top: 4px;
   }
 }
