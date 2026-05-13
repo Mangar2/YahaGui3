@@ -9,10 +9,11 @@ import { LeftTopicNavigation } from '../features/message-path/components/LeftTop
 import { useMessagePathController } from '../features/message-path/hooks/useMessagePathController';
 import { RightTopicControls } from '../features/overview-controls/components/RightTopicControls';
 import { SettingsPage, ValuesStorePage } from '../features/settings/components';
+import { RulesPage } from '../features/rules/components';
 import { SettingsConfigClient } from '../infrastructure/settings/settingsConfigClient';
 import { ValuesStoreClient } from '../infrastructure/values/valuesStoreClient';
 
-type AppViewMode = 'overview' | 'detail' | 'settings' | 'values';
+type AppViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'rules';
 
 interface AppViewState {
   mode: AppViewMode;
@@ -145,6 +146,14 @@ export default function App(): JSX.Element {
   }
 
   /**
+   * Opens rules mode from top-right header menu.
+   */
+  function openRulesPage(): void {
+    writeViewStateToLocation({ mode: 'rules', detailTopic: '' });
+    setViewState({ mode: 'rules', detailTopic: '' });
+  }
+
+  /**
    * Navigates via breadcrumb and leaves detail mode when active.
    * @param depth Amount of topic chunks to keep.
    */
@@ -194,6 +203,7 @@ export default function App(): JSX.Element {
         onOpenHome={openOverviewPage}
         onOpenSettings={openSettingsPage}
         onOpenValues={openValuesPage}
+        onOpenRules={openRulesPage}
       />
 
       {viewState.mode === 'overview' ? (
@@ -231,8 +241,10 @@ export default function App(): JSX.Element {
         />
       ) : viewState.mode === 'settings' ? (
         <SettingsPage settingsStore={settingsStoreRef.current} settingsClient={settingsClientRef.current} />
-      ) : (
+      ) : viewState.mode === 'values' ? (
         <ValuesStorePage valuesClient={valuesClientRef.current} />
+      ) : (
+        <RulesPage baseUrl={getConfigStoreBaseUrl()} configPath="automation/rules" />
       )}
 
       {topSnackbar ? (

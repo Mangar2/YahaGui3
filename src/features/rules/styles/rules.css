@@ -1,0 +1,75 @@
+/**
+ * Rules page styling.
+ */
+
+.rules-page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem 1rem;
+  min-height: 100%;
+  background: var(--ui-bg);
+}
+
+.rules-container {
+  width: 100%;
+  max-width: 800px;
+  background: var(--ui-panel-bg);
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 12px;
+  padding: 2rem;
+}
+
+.rules-container h1 {
+  margin: 0 0 2rem 0;
+  font-size: 1.75rem;
+  color: #111827;
+}
+
+.rules-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.rules-loader {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rules-summary {
+  padding: 1rem 0;
+}
+
+.rules-count {
+  font-size: 1.1rem;
+  color: #111827;
+  margin: 0;
+}
+
+.rules-error {
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.error-text {
+  margin: 0;
+  color: #991b1b;
+  font-size: 0.95rem;
+}

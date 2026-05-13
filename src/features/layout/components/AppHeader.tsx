@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { MessagePathBreadcrumb } from '../../message-path/components/MessagePathBreadcrumb';
 
-type HeaderViewMode = 'overview' | 'detail' | 'settings' | 'values';
+type HeaderViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'rules';
 
 interface AppHeaderProps {
   topicChunks: string[];
@@ -10,6 +10,7 @@ interface AppHeaderProps {
   onOpenHome: () => void;
   onOpenSettings: () => void;
   onOpenValues: () => void;
+  onOpenRules: () => void;
 }
 
 /**
@@ -18,7 +19,7 @@ interface AppHeaderProps {
  * @returns {JSX.Element} Header element.
  */
 export function AppHeader(props: AppHeaderProps): JSX.Element {
-  const { topicChunks, currentViewMode, onNavigateBreadcrumb, onOpenHome, onOpenSettings, onOpenValues } = props;
+  const { topicChunks, currentViewMode, onNavigateBreadcrumb, onOpenHome, onOpenSettings, onOpenValues, onOpenRules } = props;
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -86,6 +87,14 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
     onOpenValues();
   }
 
+  /**
+   * Opens the Rules view from menu action.
+   */
+  function openRules(): void {
+    setIsMenuOpen(false);
+    onOpenRules();
+  }
+
   return (
     <header className="app-header">
       <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={onNavigateBreadcrumb} />
@@ -131,6 +140,15 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
               onClick={openValues}
             >
               Values Store
+            </button>
+            <button
+              className="header-menu-item header-menu-item-rules"
+              type="button"
+              role="menuitem"
+              disabled={currentViewMode === 'rules'}
+              onClick={openRules}
+            >
+              Rules
             </button>
           </div>
         ) : null}
