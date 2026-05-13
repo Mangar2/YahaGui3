@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import type { RulesLoadResult } from '../../../domain/rules/interfaces';
-import type { RulesNavigationItem } from '../hooks/useRulesController';
+import type { RuleEditorField, RuleEditorState, RulesNavigationItem } from '../hooks/useRulesController';
 import { RulePathEditor } from './RulePathEditor';
 import { RulesNavigation } from './RulesNavigation';
 import '../styles/rules.css';
@@ -10,10 +10,14 @@ interface RulesPageProps {
   isLoading: boolean;
   lastRefreshIso: string | null;
   navigationItems: RulesNavigationItem[];
-  pathInputValue: string;
+  editorState: RuleEditorState | null;
   hasRuleSelection: boolean;
+  isSaving: boolean;
+  saveError: string | null;
+  saveSuccessMessage: string | null;
   onSelectNavigationItem: (item: RulesNavigationItem) => void;
-  onUpdatePathInputValue: (value: string) => void;
+  onUpdateEditorField: (field: RuleEditorField, value: string | boolean | string[]) => void;
+  onSaveRuleDetails: () => void;
 }
 
 /**
@@ -28,10 +32,14 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
     isLoading,
     lastRefreshIso,
     navigationItems,
-    pathInputValue,
+    editorState,
     hasRuleSelection,
+    isSaving,
+    saveError,
+    saveSuccessMessage,
     onSelectNavigationItem,
-    onUpdatePathInputValue,
+    onUpdateEditorField,
+    onSaveRuleDetails,
   } = props;
 
   return (
@@ -57,9 +65,13 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
 
           <div className="app-panel rules-editor-panel">
             <RulePathEditor
-              value={pathInputValue}
+              editorState={editorState}
               hasSelection={hasRuleSelection}
-              onChange={onUpdatePathInputValue}
+              isSaving={isSaving}
+              saveError={saveError}
+              saveSuccessMessage={saveSuccessMessage}
+              onFieldChange={onUpdateEditorField}
+              onSave={onSaveRuleDetails}
             />
           </div>
         </div>

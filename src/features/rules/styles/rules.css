@@ -172,6 +172,11 @@
   transform: translateY(1px);
 }
 
+.rfd-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .rfd-btn-icon {
   width: 18px;
   height: 18px;
@@ -380,6 +385,19 @@
   border-radius: 8px;
   background: #f8fafc;
   color: #475569;
+}
+
+.rfd-message {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.rfd-message-error {
+  color: #991b1b;
+}
+
+.rfd-message-success {
+  color: #166534;
 }
 
 .rules-loading-panel,

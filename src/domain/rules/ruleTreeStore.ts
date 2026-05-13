@@ -158,6 +158,60 @@ export class RuleTreeStore {
   }
 
   /**
+   * Updates the rule payload at one selected rule path.
+   * @param path Path to the rule node.
+   * @param rule Next rule payload.
+   * @returns {{ success: boolean; error: string | null }} Update result.
+   */
+  updateRule(path: RulePath, rule: Rule): { success: boolean; error: string | null } {
+    const targetName = path.name;
+    if (targetName === null || targetName.trim().length === 0) {
+      return { success: false, error: 'Regelname ist leer.' };
+    }
+
+    const parentPath = path.clone();
+    parentPath.name = null;
+    const parentNode = this.ensureFolderNode(parentPath);
+    parentNode.childs ??= {};
+
+    const existingNode = parentNode.childs[targetName];
+    if (existingNode === undefined) {
+      return { success: false, error: 'Regel konnte nicht aktualisiert werden.' };
+    }
+
+    parentNode.childs[targetName] = {
+      ...existingNode,
+      rule: cloneRule(rule),
+    };
+
+    return { success: true, error: null };
+  }
+
+  /**
+   * Deletes one rule node from the current tree.
+   * @param path Path to the rule node.
+   * @returns {{ success: boolean; error: string | null }} Delete result.
+   */
+  deleteRule(path: RulePath): { success: boolean; error: string | null } {
+    const targetName = path.name;
+    if (targetName === null || targetName.trim().length === 0) {
+      return { success: false, error: 'Regelname ist leer.' };
+    }
+
+    const parentPath = path.clone();
+    parentPath.name = null;
+    const parentNode = this.getNode(parentPath);
+    if (parentNode?.childs?.[targetName] === undefined) {
+      return { success: false, error: 'Regel wurde nicht gefunden.' };
+    }
+
+    parentNode.childs = Object.fromEntries(
+      Object.entries(parentNode.childs).filter(([childKey]: [string, RuleTreeNode]): boolean => childKey !== targetName),
+    );
+    return { success: true, error: null };
+  }
+
+  /**
    * Ensures a folder node exists for the given path.
    * @param path Folder path.
    * @returns {RuleTreeNode} Existing or newly created folder node.
