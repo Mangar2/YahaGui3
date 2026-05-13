@@ -11,13 +11,9 @@ interface RulesPageProps {
   lastRefreshIso: string | null;
   navigationItems: RulesNavigationItem[];
   pathInputValue: string;
-  isSaving: boolean;
-  saveError: string | null;
-  saveSuccessMessage: string | null;
   hasRuleSelection: boolean;
   onSelectNavigationItem: (item: RulesNavigationItem) => void;
   onUpdatePathInputValue: (value: string) => void;
-  onSaveRulePath: () => void;
 }
 
 /**
@@ -33,13 +29,9 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
     lastRefreshIso,
     navigationItems,
     pathInputValue,
-    isSaving,
-    saveError,
-    saveSuccessMessage,
     hasRuleSelection,
     onSelectNavigationItem,
     onUpdatePathInputValue,
-    onSaveRulePath,
   } = props;
 
   return (
@@ -55,7 +47,6 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
         <div className="rules-page-body overview-layout">
           <div className="app-panel rules-nav-panel">
             <div className="rules-status">
-              {isSaving ? <span className="rules-status-loader" aria-label="Rules werden gespeichert" /> : null}
               <p>
                 Letzte Aktualisierung: <strong>{formatLocalizedTime(lastRefreshIso)}</strong>
               </p>
@@ -68,11 +59,7 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
             <RulePathEditor
               value={pathInputValue}
               hasSelection={hasRuleSelection}
-              isSaving={isSaving}
-              error={saveError}
-              successMessage={saveSuccessMessage}
               onChange={onUpdatePathInputValue}
-              onSave={onSaveRulePath}
             />
           </div>
         </div>

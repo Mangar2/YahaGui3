@@ -254,15 +254,9 @@ export default function App(): JSX.Element {
           lastRefreshIso={rulesController.lastRefreshIso}
           navigationItems={rulesController.navigationItems}
           pathInputValue={rulesController.pathInputValue}
-          isSaving={rulesController.isSaving}
-          saveError={rulesController.saveError}
-          saveSuccessMessage={rulesController.saveSuccessMessage}
           hasRuleSelection={rulesController.selectedPath.name !== null}
           onSelectNavigationItem={rulesController.selectNavigationItem}
           onUpdatePathInputValue={rulesController.updatePathInputValue}
-          onSaveRulePath={(): void => {
-            void rulesController.saveRulePath();
-          }}
         />
       )}
 
