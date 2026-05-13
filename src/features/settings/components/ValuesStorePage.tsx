@@ -102,24 +102,36 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
   }
 
   /**
-   * Removes one row by id while keeping at least one editable row.
+   * Removes one row by id, then persists the updated values-store payload.
    * @param rowId Row identifier.
+   * @returns {Promise<void>} Resolves when remove and store flow is complete.
    */
-  function removeRow(rowId: string): void {
-    setRowValidationErrors((currentErrors: RowValidationErrors): RowValidationErrors => {
-      if (!(rowId in currentErrors)) {
-        return currentErrors;
-      }
+  async function removeRow(rowId: string): Promise<void> {
+    setRequestState('saving');
+    setStatusMessage('');
+    setErrorMessage('');
 
-      return Object.fromEntries(
-        Object.entries(currentErrors).filter(([currentRowId]): boolean => currentRowId !== rowId),
-      );
-    });
+    const remainingRows = ensureRowsHaveTrailingEmptyRow(
+      rows.filter((row: ValuesStoreRow): boolean => row.id !== rowId),
+    );
 
-    setRows((currentRows: ValuesStoreRow[]): ValuesStoreRow[] => {
-      const remainingRows = currentRows.filter((row: ValuesStoreRow): boolean => row.id !== rowId);
-      return ensureRowsHaveTrailingEmptyRow(remainingRows);
-    });
+    const nextValidationErrors = Object.fromEntries(
+      Object.entries(validateRows(remainingRows)).filter(([currentRowId]): boolean => currentRowId !== rowId),
+    );
+
+    setRowValidationErrors(nextValidationErrors);
+    setRows(remainingRows);
+
+    try {
+      const payload = buildPayloadFromRows(remainingRows);
+      await valuesClient.storeValues(payload);
+      setRows(ensureRowsHaveTrailingEmptyRow(markRowsAsSynced(remainingRows)));
+      setStatusMessage(`Eintrag entfernt und gespeichert (${String(Object.keys(payload).length)} Eintraege).`);
+    } catch (error: unknown) {
+      setErrorMessage(formatValuesError(error));
+    } finally {
+      setRequestState('idle');
+    }
   }
 
   /**
@@ -319,7 +331,7 @@ export function ValuesStorePage(props: ValuesStorePageProps): JSX.Element {
                           className="values-store-icon-button values-store-icon-button-remove"
                           type="button"
                           onClick={(): void => {
-                            removeRow(row.id);
+                            void removeRow(row.id);
                           }}
                           disabled={isBusy || rows.length === 1}
                           aria-label="Remove row"
