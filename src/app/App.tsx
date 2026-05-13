@@ -10,6 +10,7 @@ import { useMessagePathController } from '../features/message-path/hooks/useMess
 import { RightTopicControls } from '../features/overview-controls/components/RightTopicControls';
 import { SettingsPage, ValuesStorePage } from '../features/settings/components';
 import { RulesPage } from '../features/rules/components';
+import { useRulesController } from '../features/rules/hooks/useRulesController';
 import { SettingsConfigClient } from '../infrastructure/settings/settingsConfigClient';
 import { ValuesStoreClient } from '../infrastructure/values/valuesStoreClient';
 
@@ -38,6 +39,7 @@ export default function App(): JSX.Element {
   const valuesClientRef = useRef<ValuesStoreClient>(
     new ValuesStoreClient(getConfigStoreBaseUrl(), getValuesStoreFilename()),
   );
+  const rulesController = useRulesController(getConfigStoreBaseUrl(), 'automation/rules');
 
   const {
     topicChunks,
@@ -200,6 +202,8 @@ export default function App(): JSX.Element {
         topicChunks={topicChunks}
         currentViewMode={viewState.mode}
         onNavigateBreadcrumb={navigateBreadcrumb}
+        rulesPath={rulesController.selectedPath}
+        onNavigateRulesBreadcrumb={rulesController.navigateToDepth}
         onOpenHome={openOverviewPage}
         onOpenSettings={openSettingsPage}
         onOpenValues={openValuesPage}
@@ -244,7 +248,22 @@ export default function App(): JSX.Element {
       ) : viewState.mode === 'values' ? (
         <ValuesStorePage valuesClient={valuesClientRef.current} />
       ) : (
-        <RulesPage baseUrl={getConfigStoreBaseUrl()} configPath="automation/rules" />
+        <RulesPage
+          loadResult={rulesController.loadResult}
+          isLoading={rulesController.isLoading}
+          lastRefreshIso={rulesController.lastRefreshIso}
+          navigationItems={rulesController.navigationItems}
+          pathInputValue={rulesController.pathInputValue}
+          isSaving={rulesController.isSaving}
+          saveError={rulesController.saveError}
+          saveSuccessMessage={rulesController.saveSuccessMessage}
+          hasRuleSelection={rulesController.selectedPath.name !== null}
+          onSelectNavigationItem={rulesController.selectNavigationItem}
+          onUpdatePathInputValue={rulesController.updatePathInputValue}
+          onSaveRulePath={(): void => {
+            void rulesController.saveRulePath();
+          }}
+        />
       )}
 
       {topSnackbar ? (

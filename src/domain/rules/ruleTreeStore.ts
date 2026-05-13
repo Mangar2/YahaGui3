@@ -30,14 +30,12 @@ export class RuleTreeStore {
   }
 
   /**
-   * Gets all child names for the selected folder path.
-   * @param path Folder path.
+   * Gets all child names for the selected node path.
+   * @param path Current folder or rule path.
    * @returns {string[]} Sorted child names.
    */
   getNameList(path: RulePath): string[] {
-    const folderPath = path.clone();
-    folderPath.name = null;
-    const node = this.getNode(folderPath);
+    const node = this.getNode(path);
     if (node?.childs === undefined) {
       return [];
     }

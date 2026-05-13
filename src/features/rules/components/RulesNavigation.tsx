@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
+import type { RulesNavigationItem } from '../hooks/useRulesController';
 
 interface RulesNavigationProps {
-  items: string[];
-  activeItem: string | null;
-  onSelectItem: (item: string) => void;
+  items: RulesNavigationItem[];
+  onSelectItem: (item: RulesNavigationItem) => void;
 }
 
 /**
@@ -13,23 +13,24 @@ interface RulesNavigationProps {
  * @returns {JSX.Element} Rule navigation.
  */
 export function RulesNavigation(props: RulesNavigationProps): JSX.Element {
-  const { items, activeItem, onSelectItem } = props;
+  const { items, onSelectItem } = props;
 
   return (
     <aside className="rules-nav" aria-label="Rules Navigation">
       <ul className="rules-nav-list">
-        {items.map((item: string): JSX.Element => {
-          const type = resolveItemType(item, activeItem);
+        {items.map((item: RulesNavigationItem): JSX.Element => {
+          const type = resolveStyleType(item);
           return (
-            <li key={item} className={`rules-nav-item rules-nav-item-${type}`}>
+            <li key={item.id} className={`rules-nav-item rules-nav-item-${type}`}>
               <button
                 type="button"
                 className={`rules-nav-button rules-nav-button-${type}`}
                 onClick={(): void => {
                   onSelectItem(item);
                 }}
+                aria-current={item.type === 'current' ? 'page' : undefined}
               >
-                <span className={`rules-nav-label rules-nav-label-${type}`}>{item}</span>
+                <span className={`rules-nav-label rules-nav-label-${type}`}>{item.label}</span>
               </button>
             </li>
           );
@@ -41,17 +42,20 @@ export function RulesNavigation(props: RulesNavigationProps): JSX.Element {
 
 /**
  * Resolves the visual type of one nav item.
- * @param item Navigation item label.
- * @param activeItem Currently active item label.
- * @returns {'active' | 'new' | 'normal'} Item type.
+ * @param item Navigation item data.
+ * @returns {'active' | 'back' | 'new' | 'normal'} Item style type.
  */
-function resolveItemType(item: string, activeItem: string | null): 'active' | 'new' | 'normal' {
-  if (item === activeItem) {
+function resolveStyleType(item: RulesNavigationItem): 'active' | 'back' | 'new' | 'normal' {
+  if (item.type === 'current') {
     return 'active';
   }
 
-  if (item === 'add rule') {
+  if (item.type === 'new') {
     return 'new';
+  }
+
+  if (item.type === 'back') {
+    return 'back';
   }
 
   return 'normal';

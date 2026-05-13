@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { MessagePathBreadcrumb } from '../../message-path/components/MessagePathBreadcrumb';
+import { RulesBreadcrumb } from '../../rules/components/RulesBreadcrumb';
+import type { RulePath } from '../../../domain/rules/interfaces';
 
 type HeaderViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'rules';
 
@@ -7,6 +9,8 @@ interface AppHeaderProps {
   topicChunks: string[];
   currentViewMode: HeaderViewMode;
   onNavigateBreadcrumb: (depth: number) => void;
+  rulesPath: RulePath;
+  onNavigateRulesBreadcrumb: (depth: number) => void;
   onOpenHome: () => void;
   onOpenSettings: () => void;
   onOpenValues: () => void;
@@ -19,7 +23,17 @@ interface AppHeaderProps {
  * @returns {JSX.Element} Header element.
  */
 export function AppHeader(props: AppHeaderProps): JSX.Element {
-  const { topicChunks, currentViewMode, onNavigateBreadcrumb, onOpenHome, onOpenSettings, onOpenValues, onOpenRules } = props;
+  const {
+    topicChunks,
+    currentViewMode,
+    onNavigateBreadcrumb,
+    rulesPath,
+    onNavigateRulesBreadcrumb,
+    onOpenHome,
+    onOpenSettings,
+    onOpenValues,
+    onOpenRules,
+  } = props;
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -97,7 +111,11 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
 
   return (
     <header className="app-header">
-      <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={onNavigateBreadcrumb} />
+      {currentViewMode === 'rules' ? (
+        <RulesBreadcrumb path={rulesPath} onNavigateToDepth={onNavigateRulesBreadcrumb} />
+      ) : (
+        <MessagePathBreadcrumb topicChunks={topicChunks} onNavigate={onNavigateBreadcrumb} />
+      )}
       <div className="header-menu" ref={rootRef}>
         <button
           className="header-menu-trigger"
