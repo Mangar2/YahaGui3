@@ -32,6 +32,7 @@ interface SnackbarState {
  * @returns {JSX.Element} Application root component.
  */
 export default function App(): JSX.Element {
+  const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
   const settingsStoreRef = useRef<TopicSettingsStore>(new TopicSettingsStore());
   const settingsClientRef = useRef<SettingsConfigClient>(
     new SettingsConfigClient(getConfigStoreBaseUrl(), getConfigStorePath()),
@@ -39,7 +40,11 @@ export default function App(): JSX.Element {
   const valuesClientRef = useRef<ValuesStoreClient>(
     new ValuesStoreClient(getConfigStoreBaseUrl(), getValuesStoreFilename()),
   );
-  const rulesController = useRulesController(getConfigStoreBaseUrl(), 'automation/rules');
+  const rulesController = useRulesController(
+    getConfigStoreBaseUrl(),
+    'automation/rules',
+    viewState.mode === 'rules',
+  );
 
   const {
     topicChunks,
@@ -52,8 +57,7 @@ export default function App(): JSX.Element {
     navigateToDepth,
     selectNavItem,
     publishControlValue,
-  } = useMessagePathController(settingsStoreRef.current);
-  const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
+  } = useMessagePathController(settingsStoreRef.current, viewState.mode !== 'rules');
   const [snackbarStack, setSnackbarStack] = useState<SnackbarState[]>([]);
   const snackbarTimeoutsRef = useRef<Map<number, number>>(new Map<number, number>());
 

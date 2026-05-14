@@ -43,9 +43,13 @@ const OVERVIEW_INCLUDE_REASON = false;
 /**
  * Controls loading and refreshing the currently active message path.
  * @param settingsStore Shared settings store with localStorage-backed configuration state.
+ * @param isActive Indicates whether overview data loading is currently active.
  * @returns {MessagePathControllerState} Reactive state for breadcrumb path and topic loading.
  */
-export function useMessagePathController(settingsStore: TopicSettingsStore): MessagePathControllerState {
+export function useMessagePathController(
+  settingsStore: TopicSettingsStore,
+  isActive: boolean,
+): MessagePathControllerState {
   const [topic, setTopic] = useTopicQueryState();
   const topicChunks = useMemo((): string[] => splitTopic(topic), [topic]);
 
@@ -61,6 +65,7 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
     ),
   );
   const refreshRunningRef = useRef<boolean>(false);
+  const isActiveRef = useRef<boolean>(isActive);
   const topicChunksRef = useRef<string[]>(topicChunks);
   const messageTreeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
   const consecutivePostFailuresRef = useRef<number>(0);
@@ -87,6 +92,10 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
   }, [topicChunks]);
 
   useEffect((): void => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  useEffect((): void => {
     messageTreeRef.current = messageTree;
   }, [messageTree]);
 
@@ -95,6 +104,13 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
   }, [consecutivePostFailures]);
 
   useEffect((): (() => void) => {
+    if (!isActive) {
+      setIsLoading(false);
+      return (): void => {
+        // no-op cleanup when loading is inactive
+      };
+    }
+
     let cancelled = false;
 
     /**
@@ -129,11 +145,21 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
     return (): void => {
       cancelled = true;
     };
-  }, [topicChunks]);
+  }, [topicChunks, isActive]);
 
   useEffect((): (() => void) => {
+    if (!isActive) {
+      return (): void => {
+        // no-op cleanup when loading is inactive
+      };
+    }
+
     const intervalId = window.setInterval((): void => {
       if (refreshRunningRef.current) {
+        return;
+      }
+
+      if (!isActiveRef.current) {
         return;
       }
 
@@ -158,11 +184,19 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
             consecutivePostFailuresRef.current,
             currentTopicChunks,
           );
+
+          if (!isActiveRef.current) {
+            return;
+          }
+
           setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
           setLastRefreshIso(new Date().toISOString());
           setConsecutivePostFailures(0);
           setError(null);
         } catch (unknownError: unknown) {
+          if (!isActiveRef.current) {
+            return;
+          }
           setConsecutivePostFailures((previousFailures: number): number => previousFailures + 1);
           setError(formatLoadError(unknownError));
         } finally {
@@ -174,7 +208,7 @@ export function useMessagePathController(settingsStore: TopicSettingsStore): Mes
     return (): void => {
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [isActive]);
 
   /**
    * Navigates to a breadcrumb depth, equivalent to legacy header behavior.

@@ -63,9 +63,10 @@ interface UseRulesControllerState {
  * Loads and manages rules navigation state for the rules workspace.
  * @param baseUrl Base URL of the file-store API.
  * @param configPath Rules path inside the file-store API.
+ * @param isActive Indicates whether the rules view is currently active.
  * @returns {UseRulesControllerState} Rules workspace state and actions.
  */
-export function useRulesController(baseUrl: string, configPath: string): UseRulesControllerState {
+export function useRulesController(baseUrl: string, configPath: string, isActive: boolean): UseRulesControllerState {
   const rulesClientRef = useRef<RulesConfigClient>(new RulesConfigClient(baseUrl, configPath));
   const [loadResult, setLoadResult] = useState<RulesLoadResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -78,8 +79,11 @@ export function useRulesController(baseUrl: string, configPath: string): UseRule
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   useEffect((): void => {
+    if (!isActive) {
+      return;
+    }
     void reloadRulesFromBackend();
-  }, []);
+  }, [isActive]);
 
   const navigationItems = useMemo((): RulesNavigationItem[] => {
     if (rulesStore === null) {
