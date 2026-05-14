@@ -18,6 +18,9 @@ interface RulesPageProps {
   onSelectNavigationItem: (item: RulesNavigationItem) => void;
   onUpdateEditorField: (field: RuleEditorField, value: string | boolean | string[]) => void;
   onSaveRuleDetails: () => void;
+  onDeleteRuleDetails: () => void;
+  onReloadRules: () => void;
+  onCopyRuleDetails: () => void;
 }
 
 /**
@@ -40,6 +43,9 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
     onSelectNavigationItem,
     onUpdateEditorField,
     onSaveRuleDetails,
+    onDeleteRuleDetails,
+    onReloadRules,
+    onCopyRuleDetails,
   } = props;
 
   return (
@@ -72,6 +78,9 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
               saveSuccessMessage={saveSuccessMessage}
               onFieldChange={onUpdateEditorField}
               onSave={onSaveRuleDetails}
+              onDelete={onDeleteRuleDetails}
+              onReload={onReloadRules}
+              onCopy={onCopyRuleDetails}
             />
           </div>
         </div>

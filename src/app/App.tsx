@@ -263,6 +263,13 @@ export default function App(): JSX.Element {
           onSaveRuleDetails={(): void => {
             void rulesController.saveRuleDetails();
           }}
+          onDeleteRuleDetails={(): void => {
+            void rulesController.deleteRuleDetails();
+          }}
+          onReloadRules={(): void => {
+            void rulesController.reloadRules();
+          }}
+          onCopyRuleDetails={rulesController.copyRuleDetails}
         />
       )}
 

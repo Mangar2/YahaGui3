@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getMessageStorePath, getPublishBaseUrl, getPublishPath, getPublishTopicSetSuffix } from '../../../config/runtime';
+import { getPublishBaseUrl, getPublishPath, getPublishTopicSetSuffix } from '../../../config/runtime';
 import { RulePath, type Rule, type RuleValue, type RulesLoadResult } from '../../../domain/rules/interfaces';
 import { RuleTreeStore } from '../../../domain/rules/ruleTreeStore';
-import { MessagePublishClient, MessagePublishClientError } from '../../../infrastructure/messages/messagePublishClient';
 import { RulesConfigClient } from '../../../infrastructure/rules/rulesConfigClient';
 
 export type RulesNavigationItemType = 'current' | 'back' | 'new' | 'normal';
@@ -55,6 +54,9 @@ interface UseRulesControllerState {
   selectNavigationItem: (item: RulesNavigationItem) => void;
   updateEditorField: (field: RuleEditorField, value: string | boolean | string[]) => void;
   saveRuleDetails: () => Promise<void>;
+  deleteRuleDetails: () => Promise<void>;
+  reloadRules: () => Promise<void>;
+  copyRuleDetails: () => void;
 }
 
 /**
@@ -65,9 +67,6 @@ interface UseRulesControllerState {
  */
 export function useRulesController(baseUrl: string, configPath: string): UseRulesControllerState {
   const rulesClientRef = useRef<RulesConfigClient>(new RulesConfigClient(baseUrl, configPath));
-  const publishClientRef = useRef<MessagePublishClient>(
-    new MessagePublishClient(getPublishBaseUrl(), getPublishPath(), getMessageStorePath(), getPublishTopicSetSuffix()),
-  );
   const [loadResult, setLoadResult] = useState<RulesLoadResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [lastRefreshIso, setLastRefreshIso] = useState<string | null>(null);
@@ -79,21 +78,7 @@ export function useRulesController(baseUrl: string, configPath: string): UseRule
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   useEffect((): void => {
-    /**
-     * Loads rules once on mount.
-     */
-    async function loadRules(): Promise<void> {
-      setIsLoading(true);
-      const result = await rulesClientRef.current.loadRules();
-      setLoadResult(result);
-      if (result.success && result.rulesTree !== null) {
-        setRulesStore(new RuleTreeStore(result.rulesTree));
-        setLastRefreshIso(new Date().toISOString());
-      }
-      setIsLoading(false);
-    }
-
-    void loadRules();
+    void reloadRulesFromBackend();
   }, []);
 
   const navigationItems = useMemo((): RulesNavigationItem[] => {
@@ -293,7 +278,7 @@ export function useRulesController(baseUrl: string, configPath: string): UseRule
     try {
       const publishTopic = `${RULES_PUBLISH_TOPIC_PREFIX}/${targetPath.toTopic()}`;
       const publishPayload = JSON.stringify(rulePayload);
-      await publishClientRef.current.publishChange(publishTopic, publishPayload);
+      await publishRulesCommand(publishTopic, publishPayload);
     } catch (unknownError: unknown) {
       const message = formatRulesPublishError(unknownError);
       setSaveError(message);
@@ -316,6 +301,156 @@ export function useRulesController(baseUrl: string, configPath: string): UseRule
     setLastRefreshIso(new Date().toISOString());
   }
 
+  /**
+   * Deletes the selected rule, publishes delete command and persists updated tree.
+   */
+  async function deleteRuleDetails(): Promise<void> {
+    if (rulesStore === null || selectedPath.name === null) {
+      return;
+    }
+
+    setSaveError(null);
+    setSaveSuccessMessage(null);
+
+    const deletePath = selectedPath.clone();
+    const publishTopic = `${RULES_PUBLISH_TOPIC_PREFIX}/${deletePath.toTopic()}`;
+    const deleteResult = rulesStore.deleteRule(deletePath);
+    if (!deleteResult.success) {
+      setSaveError(deleteResult.error);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await publishRulesCommand(publishTopic, 'delete');
+    } catch (unknownError: unknown) {
+      setSaveError(formatRulesPublishError(unknownError));
+      setIsSaving(false);
+      return;
+    }
+
+    const saveResult = await rulesClientRef.current.saveRules(rulesStore.getSnapshot());
+    setIsSaving(false);
+    if (!saveResult.success) {
+      setSaveError(saveResult.error ?? 'Unbekannter Fehler beim Loeschen.');
+      return;
+    }
+
+    const nextStore = new RuleTreeStore(rulesStore.getSnapshot());
+    const nextPath = deletePath.clone();
+    nextPath.name = null;
+    setRulesStore(nextStore);
+    setSelectedPath(nextPath);
+    setEditorState(null);
+    setLoadResult((currentResult: RulesLoadResult | null): RulesLoadResult | null => {
+      if (!currentResult?.success) {
+        return currentResult;
+      }
+      return {
+        ...currentResult,
+        ruleCount: nextStore.countRules(),
+      };
+    });
+    setSaveSuccessMessage('Rule geloescht.');
+    setLastRefreshIso(new Date().toISOString());
+  }
+
+  /**
+   * Copies the selected rule to a new sibling name with "-copy" suffix.
+   */
+  function copyRuleDetails(): void {
+    if (rulesStore === null || selectedPath.name === null) {
+      return;
+    }
+
+    setSaveError(null);
+    setSaveSuccessMessage(null);
+
+    const sourceRule = rulesStore.getRule(selectedPath);
+    if (sourceRule === null) {
+      setSaveError('Ausgewaehlte Regel wurde nicht gefunden.');
+      return;
+    }
+
+    const copyPath = selectedPath.clone();
+    copyPath.name = `${selectedPath.name}-copy`;
+
+    const copiedRule: Rule = {
+      ...sourceRule,
+      name: copyPath.toTopic(),
+    };
+
+    const createResult = rulesStore.createRule(copyPath, copiedRule);
+    if (!createResult.success) {
+      setSaveError(createResult.error);
+      return;
+    }
+
+    const nextStore = new RuleTreeStore(rulesStore.getSnapshot());
+    setRulesStore(nextStore);
+    setSelectedPath(copyPath);
+    setEditorState(mapRuleToEditorState(copiedRule));
+    setLoadResult((currentResult: RulesLoadResult | null): RulesLoadResult | null => {
+      if (!currentResult?.success) {
+        return currentResult;
+      }
+      return {
+        ...currentResult,
+        ruleCount: nextStore.countRules(),
+      };
+    });
+    setSaveSuccessMessage('Rule kopiert.');
+  }
+
+  /**
+   * Triggers backend automation reload and refreshes current rules from file-store.
+   */
+  async function reloadRules(): Promise<void> {
+    setSaveError(null);
+    setSaveSuccessMessage(null);
+    setIsSaving(true);
+
+    try {
+      await publishRulesCommand('$MONITORING/automation/update', 'on');
+    } catch (unknownError: unknown) {
+      setSaveError(formatRulesPublishError(unknownError));
+      setIsSaving(false);
+      return;
+    }
+
+    await reloadRulesFromBackend();
+    setIsSaving(false);
+    setSaveSuccessMessage('Rules neu geladen.');
+  }
+
+  /**
+   * Loads rules from backend and updates local rule store state.
+   */
+  async function reloadRulesFromBackend(): Promise<void> {
+    setIsLoading(true);
+    const result = await rulesClientRef.current.loadRules();
+    setLoadResult(result);
+
+    if (result.success && result.rulesTree !== null) {
+      const nextStore = new RuleTreeStore(result.rulesTree);
+      setRulesStore(nextStore);
+      setLastRefreshIso(new Date().toISOString());
+
+      setSelectedPath((currentPath: RulePath): RulePath => {
+        const selectedRule = nextStore.getRule(currentPath);
+        if (currentPath.name === null) {
+          return currentPath;
+        }
+        if (selectedRule === null) {
+          return new RulePath();
+        }
+        return currentPath;
+      });
+    }
+
+    setIsLoading(false);
+  }
+
   return {
     loadResult,
     isLoading,
@@ -330,6 +465,9 @@ export function useRulesController(baseUrl: string, configPath: string): UseRule
     selectNavigationItem,
     updateEditorField,
     saveRuleDetails,
+    deleteRuleDetails,
+    reloadRules,
+    copyRuleDetails,
   };
 }
 
@@ -618,13 +756,44 @@ function toPathTopic(prefix: string, name: string): string {
  * @returns {string} Human-readable UI error.
  */
 function formatRulesPublishError(unknownError: unknown): string {
-  if (unknownError instanceof MessagePublishClientError) {
-    return `Fehler beim Publish: ${unknownError.message}`;
-  }
   if (unknownError instanceof Error) {
     return `Fehler beim Publish: ${unknownError.message}`;
   }
   return 'Fehler beim Publish: Unbekannter Fehler';
+}
+
+/**
+ * Publishes a rules command payload to backend publish endpoint without value verification.
+ * @param topic Base topic without write suffix.
+ * @param value Payload value string.
+ * @returns {Promise<void>} Resolves when publish endpoint accepts request.
+ */
+async function publishRulesCommand(topic: string, value: string): Promise<void> {
+  const endpoint = new URL(getPublishPath(), getPublishBaseUrl()).toString();
+  const topicWithSuffix = `${topic}${getPublishTopicSetSuffix()}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      topic: topicWithSuffix,
+      value,
+      reason: [
+        {
+          message: 'request by browser',
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      qos: 1,
+      retain: false,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`publish request failed with status ${String(response.status)}`);
+  }
 }
 
 /**

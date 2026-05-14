@@ -188,6 +188,34 @@ export class RuleTreeStore {
   }
 
   /**
+   * Creates a new rule node at the given path.
+   * @param path Target rule path.
+   * @param rule Rule payload to insert.
+   * @returns {{ success: boolean; error: string | null }} Create result.
+   */
+  createRule(path: RulePath, rule: Rule): { success: boolean; error: string | null } {
+    const targetName = path.name;
+    if (targetName === null || targetName.trim().length === 0) {
+      return { success: false, error: 'Regelname ist leer.' };
+    }
+
+    const parentPath = path.clone();
+    parentPath.name = null;
+    const parentNode = this.ensureFolderNode(parentPath);
+    parentNode.childs ??= {};
+
+    if (parentNode.childs[targetName] !== undefined) {
+      return { success: false, error: `Eine Regel oder ein Ordner mit dem Namen "${targetName}" existiert bereits.` };
+    }
+
+    parentNode.childs[targetName] = {
+      rule: cloneRule(rule),
+    };
+
+    return { success: true, error: null };
+  }
+
+  /**
    * Deletes one rule node from the current tree.
    * @param path Path to the rule node.
    * @returns {{ success: boolean; error: string | null }} Delete result.
