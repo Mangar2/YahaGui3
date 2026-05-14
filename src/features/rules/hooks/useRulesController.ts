@@ -6,7 +6,7 @@ import { RulesConfigClient } from '../../../infrastructure/rules/rulesConfigClie
 
 export type RulesNavigationItemType = 'current' | 'back' | 'new' | 'normal';
 
-const RULES_PUBLISH_TOPIC_PREFIX = '$MONITORING/automation/rules';
+const RULES_PUBLISH_TOPIC_PREFIX = '$MONITOR/automation/rules';
 const RULE_WEEKDAY_OPTIONS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export interface RuleEditorState {
@@ -415,7 +415,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
     setIsSaving(true);
 
     try {
-      await publishRulesCommand('$MONITORING/automation/update', 'on');
+      await publishRulesCommand('$MONITOR/automation/update', 'on');
     } catch (unknownError: unknown) {
       setSaveError(formatRulesPublishError(unknownError));
       setIsSaving(false);
