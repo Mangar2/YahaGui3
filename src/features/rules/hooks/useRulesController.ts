@@ -421,7 +421,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
 
     try {
       const debugTopic = `$MONITOR/automation/${selectedPath.toTopic()}/debug`;
-      await publishRulesCommand(debugTopic, 'true');
+      await publishDebugCommand(debugTopic, 'true');
     } catch (unknownError: unknown) {
       setSaveError(formatRulesPublishError(unknownError));
       setIsSaving(false);
@@ -810,6 +810,39 @@ async function publishRulesCommand(topic: string, value: string): Promise<void> 
     },
     body: JSON.stringify({
       topic: topicWithSuffix,
+      value,
+      reason: [
+        {
+          message: 'request by browser',
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      qos: 1,
+      retain: false,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`publish request failed with status ${String(response.status)}`);
+  }
+}
+
+/**
+ * Publishes a debug command to a topic without any write suffix.
+ * @param topic Topic path without any suffix.
+ * @param value Payload value string.
+ * @returns {Promise<void>} Resolves when publish endpoint accepts request.
+ */
+async function publishDebugCommand(topic: string, value: string): Promise<void> {
+  const endpoint = new URL(getPublishPath(), getPublishBaseUrl()).toString();
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      topic,
       value,
       reason: [
         {
