@@ -21,6 +21,7 @@ interface RulesPageProps {
   onDeleteRuleDetails: () => void;
   onReloadRules: () => void;
   onCopyRuleDetails: () => void;
+  onTraceRule: () => void;
 }
 
 /**
@@ -46,6 +47,7 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
     onDeleteRuleDetails,
     onReloadRules,
     onCopyRuleDetails,
+    onTraceRule,
   } = props;
 
   return (
@@ -81,6 +83,7 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
               onDelete={onDeleteRuleDetails}
               onReload={onReloadRules}
               onCopy={onCopyRuleDetails}
+              onTrace={onTraceRule}
             />
           </div>
         </div>

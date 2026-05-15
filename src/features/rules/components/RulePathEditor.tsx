@@ -12,6 +12,7 @@ interface RulePathEditorProps {
   onDelete: () => void;
   onReload: () => void;
   onCopy: () => void;
+  onTrace: () => void;
 }
 
 interface RulePathRowProps {
@@ -58,6 +59,7 @@ export function RulePathEditor(props: RulePathEditorProps): JSX.Element {
     onDelete,
     onReload,
     onCopy,
+    onTrace,
   } = props;
   const [isFolded, setIsFolded] = useState<boolean>(true);
 
@@ -94,6 +96,7 @@ export function RulePathEditor(props: RulePathEditorProps): JSX.Element {
           onDelete={onDelete}
           onReload={onReload}
           onCopy={onCopy}
+          onTrace={onTrace}
           onToggleFold={(): void => {
             setIsFolded((current: boolean): boolean => !current);
           }}
@@ -129,9 +132,10 @@ function RuleHeader(props: {
   onDelete: () => void;
   onReload: () => void;
   onCopy: () => void;
+  onTrace: () => void;
   onToggleFold: () => void;
 }): JSX.Element {
-  const { isSaving, isFolded, onSave, onDelete, onReload, onCopy, onToggleFold } = props;
+  const { isSaving, isFolded, onSave, onDelete, onReload, onCopy, onTrace, onToggleFold } = props;
 
   return (
     <div className="rfd-header">
@@ -150,6 +154,10 @@ function RuleHeader(props: {
       <button className="rfd-btn" type="button" onClick={onCopy} disabled={isSaving}>
         <svg className="rfd-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
         copy
+      </button>
+      <button className="rfd-btn" type="button" onClick={onTrace} disabled={isSaving}>
+        <svg className="rfd-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        trace
       </button>
       <button className="rfd-btn" type="button" aria-pressed={!isFolded} onClick={onToggleFold}>
         <svg className="rfd-btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.83 15.17 9l1.41-1.41L12 3 7.41 7.59 8.83 9 12 5.83zm0 12.34L8.83 15l-1.41 1.41L12 21l4.59-4.59L15.17 15 12 18.17z"/></svg>

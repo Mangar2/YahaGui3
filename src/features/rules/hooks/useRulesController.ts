@@ -57,6 +57,7 @@ interface UseRulesControllerState {
   deleteRuleDetails: () => Promise<void>;
   reloadRules: () => Promise<void>;
   copyRuleDetails: () => void;
+  traceRuleDetails: () => Promise<void>;
 }
 
 /**
@@ -407,6 +408,31 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
   }
 
   /**
+   * Publishes a debug trace command for the currently selected rule.
+   */
+  async function traceRuleDetails(): Promise<void> {
+    if (selectedPath.name === null) {
+      return;
+    }
+
+    setSaveError(null);
+    setSaveSuccessMessage(null);
+    setIsSaving(true);
+
+    try {
+      const debugTopic = `$MONITOR/automation/${selectedPath.toTopic()}/debug`;
+      await publishRulesCommand(debugTopic, 'true');
+    } catch (unknownError: unknown) {
+      setSaveError(formatRulesPublishError(unknownError));
+      setIsSaving(false);
+      return;
+    }
+
+    setIsSaving(false);
+    setSaveSuccessMessage('Trace gesendet.');
+  }
+
+  /**
    * Triggers backend automation reload and refreshes current rules from file-store.
    */
   async function reloadRules(): Promise<void> {
@@ -472,6 +498,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
     deleteRuleDetails,
     reloadRules,
     copyRuleDetails,
+    traceRuleDetails,
   };
 }
 

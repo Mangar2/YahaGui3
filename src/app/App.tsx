@@ -274,6 +274,9 @@ export default function App(): JSX.Element {
             void rulesController.reloadRules();
           }}
           onCopyRuleDetails={rulesController.copyRuleDetails}
+          onTraceRule={(): void => {
+            void rulesController.traceRuleDetails();
+          }}
         />
       )}
 
