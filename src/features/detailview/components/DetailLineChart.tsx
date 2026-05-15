@@ -43,6 +43,9 @@ const RANGE_OPTIONS: readonly { key: ChartRangePreset; label: string }[] = [
 
 const CHART_HEIGHT = 270;
 const CHART_PADDING = { top: 20, right: 16, bottom: 54, left: 56 } as const;
+const Y_AXIS_LABEL_MIN_SPACING_PX = 28;
+const Y_AXIS_MIN_TICK_AMOUNT = 2;
+const Y_AXIS_MAX_TICK_AMOUNT = 8;
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
@@ -115,38 +118,35 @@ export function DetailLineChart(props: DetailLineChartProps): JSX.Element {
     return createTimeTicks(chartBounds.minX, chartBounds.maxX, targetTickAmount);
   }, [chartBounds, innerRect.width]);
 
-  const yTicks = useMemo((): number[] => {
-    if (!chartBounds) {
-      return [];
-    }
-    const maxTickAmount = clamp(Math.floor(innerRect.height / 48), 3, 8);
-    return createNiceYAxisScale(chartBounds.minY, chartBounds.maxY, maxTickAmount).ticks;
-  }, [chartBounds, innerRect.height]);
-
-  const yScaleBounds = useMemo((): Pick<ChartBounds, 'minY' | 'maxY'> | null => {
+  const yAxisScale = useMemo((): NiceYAxisScale | null => {
     if (!chartBounds) {
       return null;
     }
-    const maxTickAmount = clamp(Math.floor(innerRect.height / 48), 3, 8);
-    const niceScale = createNiceYAxisScale(chartBounds.minY, chartBounds.maxY, maxTickAmount);
-    return {
-      minY: niceScale.min,
-      maxY: niceScale.max,
-    };
+
+    const maxTicksByHeight = Math.floor(innerRect.height / Y_AXIS_LABEL_MIN_SPACING_PX) + 1;
+    const targetTickAmount = clamp(
+      maxTicksByHeight,
+      Y_AXIS_MIN_TICK_AMOUNT,
+      Y_AXIS_MAX_TICK_AMOUNT,
+    );
+
+    return createNiceYAxisScale(chartBounds.minY, chartBounds.maxY, targetTickAmount);
   }, [chartBounds, innerRect.height]);
 
+  const yTicks = yAxisScale?.ticks ?? [];
+
   const renderBounds = useMemo((): ChartBounds | null => {
-    if (!chartBounds || !yScaleBounds) {
+    if (!chartBounds || !yAxisScale) {
       return null;
     }
 
     return {
       minX: chartBounds.minX,
       maxX: chartBounds.maxX,
-      minY: yScaleBounds.minY,
-      maxY: yScaleBounds.maxY,
+      minY: yAxisScale.min,
+      maxY: yAxisScale.max,
     };
-  }, [chartBounds, yScaleBounds]);
+  }, [chartBounds, yAxisScale]);
 
   const linePath = useMemo((): string => {
     if (!renderBounds || filteredPoints.length === 0) {
@@ -525,46 +525,82 @@ function createNiceYAxisScale(minValue: number, maxValue: number, maxTickAmount:
     };
   }
 
-  const safeMaxTickAmount = Math.max(3, maxTickAmount);
+  const safeMaxTickAmount = Math.max(Y_AXIS_MIN_TICK_AMOUNT, maxTickAmount);
   const span = Math.abs(maxValue - minValue);
 
   if (span < Number.EPSILON) {
     const absoluteValue = Math.abs(minValue);
-    const fallbackStep = absoluteValue > 0 ? niceNumber(absoluteValue * 0.25, true) : 1;
-    const ticks = [minValue - fallbackStep, minValue, minValue + fallbackStep];
+    const fallbackSpan = absoluteValue > 0 ? absoluteValue * 0.08 : 1;
+    const fallbackStep = niceNumber(fallbackSpan / Math.max(1, safeMaxTickAmount - 1), true);
+    const ticks = buildYAxisTicks(minValue - fallbackStep, minValue + fallbackStep, fallbackStep);
+    const firstTick = ticks[0] ?? minValue - fallbackStep;
+    const lastTick = ticks[ticks.length - 1] ?? minValue + fallbackStep;
     return {
       ticks,
-      min: minValue - fallbackStep * 1.15,
-      max: minValue + fallbackStep * 1.2,
+      min: firstTick,
+      max: lastTick,
     };
   }
 
-  const roughStep = span / (safeMaxTickAmount - 1);
-  const niceStep = niceNumber(roughStep, true);
-  const niceMin = Math.floor(minValue / niceStep) * niceStep;
-  const niceMax = Math.ceil(maxValue / niceStep) * niceStep;
+  const roughStep = span / Math.max(1, safeMaxTickAmount - 1);
+  let niceStep = niceNumber(roughStep, true);
+  let niceMin = Math.floor(minValue / niceStep) * niceStep;
+  let niceMax = Math.ceil(maxValue / niceStep) * niceStep;
+  let safeTicks = buildYAxisTicks(niceMin, niceMax, niceStep);
+  let guard = 0;
 
-  const ticks: number[] = [];
-  const maxLoopCount = 256;
-  let cursor = niceMin;
-  let loopCounter = 0;
-  while (cursor <= niceMax + niceStep * 0.5 && loopCounter < maxLoopCount) {
-    ticks.push(roundToStepPrecision(cursor, niceStep));
-    cursor += niceStep;
-    loopCounter += 1;
+  while (safeTicks.length > safeMaxTickAmount && guard < 12) {
+    niceStep = niceNumber(niceStep * 1.2, false);
+    niceMin = Math.floor(minValue / niceStep) * niceStep;
+    niceMax = Math.ceil(maxValue / niceStep) * niceStep;
+    safeTicks = buildYAxisTicks(niceMin, niceMax, niceStep);
+    guard += 1;
   }
 
-  const safeTicks = ticks.length >= 2 ? ticks : [niceMin, niceMax];
+  if (safeTicks.length < Y_AXIS_MIN_TICK_AMOUNT) {
+    safeTicks = [niceMin, niceMax];
+  }
+
   const firstTick = safeTicks[0] ?? niceMin;
   const lastTick = safeTicks[safeTicks.length - 1] ?? niceMax;
-  const secondTick = safeTicks[1];
-  const step = secondTick !== undefined ? Math.abs(secondTick - firstTick) : Math.abs(niceStep);
 
   return {
     ticks: safeTicks,
-    min: firstTick - step * 0.08,
-    max: lastTick + step * 0.18,
+    min: firstTick,
+    max: lastTick,
   };
+}
+
+/**
+ * Builds rounded Y-axis tick values for a start/end range and one step size.
+ * @param minTick First tick value.
+ * @param maxTick Last tick value.
+ * @param step Tick step size.
+ * @returns {number[]} Ordered, de-duplicated tick values.
+ */
+function buildYAxisTicks(minTick: number, maxTick: number, step: number): number[] {
+  if (!Number.isFinite(minTick) || !Number.isFinite(maxTick) || !Number.isFinite(step) || step <= 0) {
+    return [];
+  }
+
+  const ticks: number[] = [];
+  const maxLoopCount = 256;
+  let cursor = minTick;
+  let loopCounter = 0;
+  while (cursor <= maxTick + step * 0.5 && loopCounter < maxLoopCount) {
+    ticks.push(roundToStepPrecision(cursor, step));
+    cursor += step;
+    loopCounter += 1;
+  }
+
+  const deduplicatedTicks: number[] = [];
+  for (const tickValue of ticks) {
+    if (!deduplicatedTicks.includes(tickValue)) {
+      deduplicatedTicks.push(tickValue);
+    }
+  }
+
+  return deduplicatedTicks;
 }
 
 /**
@@ -664,9 +700,13 @@ function buildAreaPath(points: ChartPoint[], bounds: ChartBounds, rect: ChartRec
  * @returns {number} X coordinate.
  */
 function scaleX(timestampMs: number, bounds: ChartBounds, rect: ChartRect): number {
-  const denominator = Math.max(1, bounds.maxX - bounds.minX);
+  const denominator = bounds.maxX - bounds.minX;
+  if (Math.abs(denominator) < Number.EPSILON) {
+    return rect.width / 2;
+  }
+
   const factor = (timestampMs - bounds.minX) / denominator;
-  return factor * rect.width;
+  return clamp(factor, 0, 1) * rect.width;
 }
 
 /**
@@ -677,9 +717,13 @@ function scaleX(timestampMs: number, bounds: ChartBounds, rect: ChartRect): numb
  * @returns {number} Y coordinate.
  */
 function scaleY(value: number, bounds: ChartBounds, rect: ChartRect): number {
-  const denominator = Math.max(1, bounds.maxY - bounds.minY);
+  const denominator = bounds.maxY - bounds.minY;
+  if (Math.abs(denominator) < Number.EPSILON) {
+    return rect.height / 2;
+  }
+
   const factor = (value - bounds.minY) / denominator;
-  return rect.height - factor * rect.height;
+  return rect.height - clamp(factor, 0, 1) * rect.height;
 }
 
 /**
