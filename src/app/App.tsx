@@ -57,7 +57,7 @@ export default function App(): JSX.Element {
     navigateToDepth,
     selectNavItem,
     publishControlValue,
-  } = useMessagePathController(settingsStoreRef.current, viewState.mode !== 'rules');
+  } = useMessagePathController(settingsStoreRef.current, viewState.mode === 'overview');
   const [snackbarStack, setSnackbarStack] = useState<SnackbarState[]>([]);
   const snackbarTimeoutsRef = useRef<Map<number, number>>(new Map<number, number>());
 
