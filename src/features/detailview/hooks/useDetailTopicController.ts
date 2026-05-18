@@ -49,6 +49,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
   const topicRef = useRef<string>(topic);
   const refreshRunningRef = useRef<boolean>(false);
   const isUpdatingRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [tree, setTree] = useState<MessageTreeNode>(createEmptyMessageTree());
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -77,6 +78,11 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
   }, [topic]);
 
   useEffect((): (() => void) => {
+    // Cancel any previous request when topic changes
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     let cancelled = false;
 
     /**
@@ -92,13 +98,17 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
       }
 
       try {
-        const payload = await storeClientRef.current.loadTopicSection(topic, {
-          time: true,
-          history: true,
-          reason: true,
-          levelAmount: DETAIL_INITIAL_LEVEL_AMOUNT,
-        });
-        if (cancelled) {
+        const payload = await storeClientRef.current.loadTopicSection(
+          topic,
+          {
+            time: true,
+            history: true,
+            reason: true,
+            levelAmount: DETAIL_INITIAL_LEVEL_AMOUNT,
+          },
+          signal,
+        );
+        if (cancelled || signal.aborted) {
           return;
         }
 
@@ -107,11 +117,16 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
         setLastRefreshIso(new Date().toISOString());
         setError(null);
       } catch (unknownError: unknown) {
-        if (!cancelled) {
-          setError(formatDetailLoadError(unknownError));
+        if (cancelled || signal.aborted) {
+          return;
         }
+        // Ignore AbortError from cancelled requests
+        if (unknownError instanceof Error && unknownError.name === 'AbortError') {
+          return;
+        }
+        setError(formatDetailLoadError(unknownError));
       } finally {
-        if (!cancelled) {
+        if (!cancelled && !signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -121,12 +136,23 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
 
     return (): void => {
       cancelled = true;
+      abortControllerRef.current?.abort();
     };
   }, [topic]);
 
   useEffect((): (() => void) => {
+    // Create abort controller for polling
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     const intervalId = window.setInterval((): void => {
       if (refreshRunningRef.current || isUpdatingRef.current || topicRef.current.trim().length === 0) {
+        return;
+      }
+
+      // If signal is already aborted, clear the interval
+      if (signal.aborted) {
+        window.clearInterval(intervalId);
         return;
       }
 
@@ -138,12 +164,20 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
           const oldNode = getNodeByTopicChunks(treeRef.current, currentTopicChunks);
           const oldTime = oldNode?.time;
 
-          const valuePayload = await storeClientRef.current.loadTopicSection(currentTopic, {
-            time: true,
-            history: false,
-            reason: true,
-            levelAmount: DETAIL_POLL_LEVEL_AMOUNT,
-          });
+          const valuePayload = await storeClientRef.current.loadTopicSection(
+            currentTopic,
+            {
+              time: true,
+              history: false,
+              reason: true,
+              levelAmount: DETAIL_POLL_LEVEL_AMOUNT,
+            },
+            signal,
+          );
+
+          if (signal.aborted) {
+            return;
+          }
 
           let nextTree = replaceManyNodes(treeRef.current, valuePayload);
           const refreshedNode = getNodeByTopicChunks(nextTree, currentTopicChunks);
@@ -153,12 +187,22 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
             refreshedNode.time !== oldTime;
 
           if (hasTimestampUpdate) {
-            const historyPayload = await storeClientRef.current.loadTopicSection(currentTopic, {
-              time: true,
-              history: true,
-              reason: true,
-              levelAmount: DETAIL_POLL_LEVEL_AMOUNT,
-            });
+            const historyPayload = await storeClientRef.current.loadTopicSection(
+              currentTopic,
+              {
+                time: true,
+                history: true,
+                reason: true,
+                levelAmount: DETAIL_POLL_LEVEL_AMOUNT,
+              },
+              signal,
+            );
+
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (signal.aborted) {
+              return;
+            }
+
             nextTree = replaceManyNodes(nextTree, historyPayload);
           }
 
@@ -166,6 +210,13 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
           setLastRefreshIso(new Date().toISOString());
           setError(null);
         } catch (unknownError: unknown) {
+          if (signal.aborted) {
+            return;
+          }
+          // Ignore AbortError from cancelled requests
+          if (unknownError instanceof Error && unknownError.name === 'AbortError') {
+            return;
+          }
           setError(formatDetailLoadError(unknownError));
         } finally {
           refreshRunningRef.current = false;
@@ -175,6 +226,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
 
     return (): void => {
       window.clearInterval(intervalId);
+      abortControllerRef.current?.abort();
     };
   }, []);
 

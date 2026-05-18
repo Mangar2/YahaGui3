@@ -47,9 +47,14 @@ export class MessageStoreClient {
    * Loads the current section for a topic path via GET /store/<topic>.
    * @param topic Topic prefix path.
    * @param options Query behavior flags.
-    * @returns {Promise<MessageTopicData[]>} Normalized payload list.
+   * @param signal Optional AbortSignal to cancel the request.
+   * @returns {Promise<MessageTopicData[]>} Normalized payload list.
    */
-  public async loadTopicSection(topic: string, options: MessageStoreQueryOptions): Promise<MessageTopicData[]> {
+  public async loadTopicSection(
+    topic: string,
+    options: MessageStoreQueryOptions,
+    signal?: AbortSignal,
+  ): Promise<MessageTopicData[]> {
     const endpoint = this.buildStoreEndpoint(topic);
     const response = await fetch(endpoint, {
       method: 'GET',
@@ -59,6 +64,7 @@ export class MessageStoreClient {
         history: options.history ? 'true' : 'false',
         reason: options.reason ? 'true' : 'false',
       },
+      signal,
     });
 
     return this.readPayloadResponse(response, endpoint);
@@ -67,9 +73,13 @@ export class MessageStoreClient {
   /**
    * Refreshes a topic path via direct POST /store.
    * @param request Direct query object for message-store.
-    * @returns {Promise<MessageTopicData[]>} Normalized payload list.
+   * @param signal Optional AbortSignal to cancel the request.
+   * @returns {Promise<MessageTopicData[]>} Normalized payload list.
    */
-  public async refreshTopicSection(request: MessageStoreDirectRequest): Promise<MessageTopicData[]> {
+  public async refreshTopicSection(
+    request: MessageStoreDirectRequest,
+    signal?: AbortSignal,
+  ): Promise<MessageTopicData[]> {
     const endpoint = new URL(this.storePath, this.baseUrl).toString();
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -77,6 +87,7 @@ export class MessageStoreClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(request),
+      signal,
     });
 
     return this.readPayloadResponse(response, endpoint);

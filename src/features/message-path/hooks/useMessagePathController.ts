@@ -69,6 +69,7 @@ export function useMessagePathController(
   const topicChunksRef = useRef<string[]>(topicChunks);
   const messageTreeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
   const consecutivePostFailuresRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [messageTree, setMessageTree] = useState<MessageTreeNode>(createEmptyMessageTree());
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -111,6 +112,11 @@ export function useMessagePathController(
       };
     }
 
+    // Cancel any previous request when topic changes
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     let cancelled = false;
 
     /**
@@ -120,8 +126,8 @@ export function useMessagePathController(
     async function runInitialLoad(): Promise<void> {
       setIsLoading(true);
       try {
-        const payload = await fetchOverviewSection(clientRef.current, topicChunks);
-        if (cancelled) {
+        const payload = await fetchOverviewSection(clientRef.current, topicChunks, signal);
+        if (cancelled || signal.aborted) {
           return;
         }
         setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
@@ -129,12 +135,16 @@ export function useMessagePathController(
         setConsecutivePostFailures(0);
         setError(null);
       } catch (unknownError: unknown) {
-        if (cancelled) {
+        if (cancelled || signal.aborted) {
+          return;
+        }
+        // Ignore AbortError from cancelled requests
+        if (unknownError instanceof Error && unknownError.name === 'AbortError') {
           return;
         }
         setError(formatLoadError(unknownError));
       } finally {
-        if (!cancelled) {
+        if (!cancelled && !signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -144,6 +154,7 @@ export function useMessagePathController(
 
     return (): void => {
       cancelled = true;
+      abortControllerRef.current?.abort();
     };
   }, [topicChunks, isActive]);
 
@@ -154,12 +165,22 @@ export function useMessagePathController(
       };
     }
 
+    // Create abort controller for polling
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     const intervalId = window.setInterval((): void => {
       if (refreshRunningRef.current) {
         return;
       }
 
       if (!isActiveRef.current) {
+        return;
+      }
+
+      // If signal is already aborted, clear the interval
+      if (signal.aborted) {
+        window.clearInterval(intervalId);
         return;
       }
 
@@ -183,9 +204,10 @@ export function useMessagePathController(
             request,
             consecutivePostFailuresRef.current,
             currentTopicChunks,
+            signal,
           );
 
-          if (!isActiveRef.current) {
+          if (!isActiveRef.current || signal.aborted) {
             return;
           }
 
@@ -194,7 +216,11 @@ export function useMessagePathController(
           setConsecutivePostFailures(0);
           setError(null);
         } catch (unknownError: unknown) {
-          if (!isActiveRef.current) {
+          if (!isActiveRef.current || signal.aborted) {
+            return;
+          }
+          // Ignore AbortError from cancelled requests
+          if (unknownError instanceof Error && unknownError.name === 'AbortError') {
             return;
           }
           setConsecutivePostFailures((previousFailures: number): number => previousFailures + 1);
@@ -207,6 +233,7 @@ export function useMessagePathController(
 
     return (): void => {
       window.clearInterval(intervalId);
+      abortControllerRef.current?.abort();
     };
   }, [isActive]);
 
@@ -381,15 +408,24 @@ function buildTopicSnapshotNodes(activeNode: MessageTreeNode | null): MessageTop
  * Loads overview section via legacy-equivalent GET configuration.
  * @param client Message-store client.
  * @param topicChunks Current topic chunks.
+ * @param signal Optional AbortSignal to cancel the request.
  * @returns {Promise<MessageTopicData[]>} Loaded topic payload.
  */
-async function fetchOverviewSection(client: MessageStoreClient, topicChunks: string[]): Promise<MessageTopicData[]> {
-  return client.loadTopicSection(joinTopic(topicChunks), {
-    time: OVERVIEW_INCLUDE_TIME,
-    history: OVERVIEW_INCLUDE_HISTORY,
-    reason: OVERVIEW_INCLUDE_REASON,
-    levelAmount: OVERVIEW_LEVEL_AMOUNT,
-  });
+async function fetchOverviewSection(
+  client: MessageStoreClient,
+  topicChunks: string[],
+  signal?: AbortSignal,
+): Promise<MessageTopicData[]> {
+  return client.loadTopicSection(
+    joinTopic(topicChunks),
+    {
+      time: OVERVIEW_INCLUDE_TIME,
+      history: OVERVIEW_INCLUDE_HISTORY,
+      reason: OVERVIEW_INCLUDE_REASON,
+      levelAmount: OVERVIEW_LEVEL_AMOUNT,
+    },
+    signal,
+  );
 }
 
 /**
@@ -416,6 +452,7 @@ function determineRequestNodes(
  * @param request Refresh request payload.
  * @param consecutivePostFailures Consecutive POST failures so far.
  * @param topicChunks Current topic chunks.
+ * @param signal Optional AbortSignal to cancel the request.
  * @returns {Promise<MessageTopicData[]>} Payload for tree merge.
  */
 async function refreshOverviewSection(
@@ -423,11 +460,12 @@ async function refreshOverviewSection(
   request: MessageStoreDirectRequest,
   consecutivePostFailures: number,
   topicChunks: string[],
+  signal?: AbortSignal,
 ): Promise<MessageTopicData[]> {
   if (consecutivePostFailures >= MAX_POST_FAILURES_BEFORE_FULL_RESYNC) {
-    return fetchOverviewSection(client, topicChunks);
+    return fetchOverviewSection(client, topicChunks, signal);
   }
-  return client.refreshTopicSection(request);
+  return client.refreshTopicSection(request, signal);
 }
 
 /**
