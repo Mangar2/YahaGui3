@@ -100,25 +100,38 @@ function updateAtPath(node: MessageTreeNode, topicChunks: string[], depth: numbe
 }
 
 /**
- * Applies topic payload values to one node while preserving history behavior from legacy implementation.
+ * Applies topic payload values to one node while preserving all fields not in payload.
+ * Only fields explicitly present in the payload are updated; all others are kept from the original node.
+ * This ensures that requests without history don't clear the history, and value-only requests don't clear reason.
  * @param node Existing node.
- * @param message Message payload.
- * @returns {MessageTreeNode} Updated node.
+ * @param message Message payload containing only the fields to update.
+ * @returns {MessageTreeNode} Updated node with selective field updates.
  */
 function applyMessageToNode(node: MessageTreeNode, message: MessageTopicData): MessageTreeNode {
-  const updatedNodeBase: MessageTreeNode = {
+  const updatedNode: MessageTreeNode = {
     childs: node.childs,
     topic: message.topic,
   };
 
-  const updatedNode: MessageTreeNode = {
-    ...updatedNodeBase,
-    ...(message.value !== undefined ? { value: message.value } : {}),
-    ...(message.time !== undefined ? { time: message.time } : {}),
-    ...(message.reason !== undefined ? { reason: message.reason } : {}),
-  };
+  // Selectively apply only fields present in the payload; preserve all others from the original node
+  if (message.value !== undefined) {
+    updatedNode.value = message.value;
+  } else if (node.value !== undefined) {
+    updatedNode.value = node.value;
+  }
 
-  // Legacy behavior: if history is missing in the new payload, keep old history.
+  if (message.time !== undefined) {
+    updatedNode.time = message.time;
+  } else if (node.time !== undefined) {
+    updatedNode.time = node.time;
+  }
+
+  if (message.reason !== undefined) {
+    updatedNode.reason = message.reason;
+  } else if (node.reason !== undefined) {
+    updatedNode.reason = node.reason;
+  }
+
   if (message.history !== undefined) {
     updatedNode.history = message.history;
   } else if (node.history !== undefined) {
