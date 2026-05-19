@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type JSX } from 'react';
+import { deriveDisplayName } from '../../../domain/messages/displayName';
 import { splitTopic } from '../../../domain/messages/topicPath';
 import type { MessageTreeNode } from '../../../domain/messages/interfaces';
 import type { TopicSettingsStore } from '../../../domain/settings/interfaces';
 
 interface DetailStatusPanelProps {
   topic: string;
+  messageTree: MessageTreeNode;
   topicNode: MessageTreeNode | null;
   settingsStore: TopicSettingsStore;
   settingsRevision: number;
@@ -46,11 +48,11 @@ const UNIT_IDENTIFIER: Record<string, string> = {
  * @returns {JSX.Element} Status section for detail view.
  */
 export function DetailStatusPanel(props: DetailStatusPanelProps): JSX.Element {
-  const { topic, topicNode, settingsStore, settingsRevision, isUpdatingTopic, onPublishValueChange } = props;
+  const { topic, messageTree, topicNode, settingsStore, settingsRevision, isUpdatingTopic, onPublishValueChange } = props;
 
   const statusModel = useMemo((): StatusViewModel => {
-    return buildStatusViewModel(topic, topicNode, settingsStore, settingsRevision);
-  }, [topic, topicNode, settingsStore, settingsRevision]);
+    return buildStatusViewModel(topic, messageTree, topicNode, settingsStore, settingsRevision);
+  }, [topic, messageTree, topicNode, settingsStore, settingsRevision]);
 
   const [editableValue, setEditableValue] = useState<string>(statusModel.currentValueText);
 
@@ -164,6 +166,7 @@ export function DetailStatusPanel(props: DetailStatusPanelProps): JSX.Element {
  */
 function buildStatusViewModel(
   topic: string,
+  messageTree: MessageTreeNode,
   topicNode: MessageTreeNode | null,
   settingsStore: TopicSettingsStore,
   settingsRevision: number,
@@ -187,7 +190,10 @@ function buildStatusViewModel(
 
   return {
     topicName,
-    beautifiedTopicName: beautifyTopicName(topicName, topicType),
+    beautifiedTopicName: deriveDisplayName(effectiveTopic, {
+      messageTree,
+      settingsStore,
+    }),
     topicType,
     valueType,
     unit: UNIT_IDENTIFIER[topicType] ?? '',
@@ -297,26 +303,4 @@ function isTopicUpdatable(topicNode: MessageTreeNode | null): boolean {
     return false;
   }
   return Object.prototype.hasOwnProperty.call(topicNode.childs, 'set');
-}
-
-/**
- * Formats a display title for status panel.
- * @param topicName Raw topic name.
- * @param topicType Decided topic type.
- * @returns {string} Beautified title.
- */
-function beautifyTopicName(topicName: string, topicType: string): string {
-  const nameBase = topicType !== 'Information' ? topicType : topicName;
-  const normalized = nameBase.replaceAll('_', ' ').replaceAll('-', ' ').trim();
-  if (normalized.length === 0) {
-    return 'Unknown';
-  }
-
-  return normalized
-    .split(' ')
-    .filter((chunk: string): boolean => chunk.length > 0)
-    .map((chunk: string): string => {
-      return `${chunk.charAt(0).toUpperCase()}${chunk.slice(1).toLowerCase()}`;
-    })
-    .join(' ');
 }

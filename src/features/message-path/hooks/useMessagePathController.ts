@@ -363,7 +363,7 @@ function buildConfiguredControlItems(
     }
   }
 
-  return buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore);
+  return buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore, messageTree);
 }
 
 /**

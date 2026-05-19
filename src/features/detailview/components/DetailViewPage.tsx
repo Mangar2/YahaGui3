@@ -20,7 +20,7 @@ interface DetailViewPageProps {
  */
 export function DetailViewPage(props: DetailViewPageProps): JSX.Element {
   const { topic, settingsStore, onBackToOverview, onDeferredError } = props;
-  const { activeNode, isLoading, isUpdatingTopic, error, publishValueChange } = useDetailTopicController(topic);
+  const { messageTree, activeNode, isLoading, isUpdatingTopic, error, publishValueChange } = useDetailTopicController(topic);
   const [settingsRevision, setSettingsRevision] = useState<number>(0);
   const lastNotifiedErrorRef = useRef<string>('');
 
@@ -69,6 +69,7 @@ export function DetailViewPage(props: DetailViewPageProps): JSX.Element {
           <div className="detail-top-row">
             <DetailStatusPanel
               topic={topic}
+              messageTree={messageTree}
               topicNode={activeNode}
               settingsStore={settingsStore}
               settingsRevision={settingsRevision}

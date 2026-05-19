@@ -17,6 +17,7 @@ const DETAIL_INITIAL_LEVEL_AMOUNT = 1;
 const DETAIL_POLL_LEVEL_AMOUNT = 0;
 
 export interface DetailTopicControllerState {
+  messageTree: MessageTreeNode;
   activeNode: MessageTreeNode | null;
   isLoading: boolean;
   isUpdatingTopic: boolean;
@@ -266,6 +267,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
   }
 
   return {
+    messageTree: tree,
     activeNode,
     isLoading,
     isUpdatingTopic,

@@ -1,4 +1,5 @@
 import type { MessageScalar, MessageTreeNode } from './interfaces';
+import { deriveDisplayName as deriveTopicDisplayName } from './displayName';
 import { splitTopic } from './topicPath';
 import type { TopicSettingsStore } from '../settings/interfaces';
 
@@ -65,6 +66,7 @@ export function buildTopicControlItems(
   activeNode: MessageTreeNode | null,
   topicChunks: string[],
   settingsStore?: TopicSettingsStore,
+  messageTree?: MessageTreeNode,
 ): TopicControlItem[] {
   if (!activeNode) {
     return [];
@@ -88,7 +90,7 @@ export function buildTopicControlItems(
     nodes.push(activeNode);
   }
 
-  return buildTopicControlItemsFromNodes(nodes, topicChunks, settingsStore);
+  return buildTopicControlItemsFromNodes(nodes, topicChunks, settingsStore, messageTree);
 }
 
 /**
@@ -102,6 +104,7 @@ export function buildTopicControlItemsFromNodes(
   nodes: MessageTreeNode[],
   topicChunks: string[],
   settingsStore?: TopicSettingsStore,
+  messageTree?: MessageTreeNode,
 ): TopicControlItem[] {
   const items: TopicControlItem[] = [];
   for (const node of nodes) {
@@ -111,7 +114,7 @@ export function buildTopicControlItemsFromNodes(
     if (splitTopic(node.topic).at(-1) === 'set') {
       continue;
     }
-    items.push(buildControlItem(node, topicChunks, settingsStore));
+    items.push(buildControlItem(node, topicChunks, settingsStore, messageTree));
   }
 
   return sortControlItems(items);
@@ -128,6 +131,7 @@ function buildControlItem(
   node: MessageTreeNode,
   topicChunks: string[],
   settingsStore?: TopicSettingsStore,
+  messageTree?: MessageTreeNode,
 ): TopicControlItem {
   const topic = node.topic ?? '';
   const value = node.value ?? null;
@@ -136,9 +140,23 @@ function buildControlItem(
   const isSwitchOn = isSwitchOnValue(topicType, value);
   const iconName = getConfiguredIconName(topic, settingsStore);
 
+  const displayNameOptions: {
+    currentTopicChunks: string[];
+    messageTree?: MessageTreeNode | null;
+    settingsStore?: TopicSettingsStore;
+  } = {
+    currentTopicChunks: topicChunks,
+  };
+  if (typeof settingsStore !== 'undefined') {
+    displayNameOptions.settingsStore = settingsStore;
+  }
+  if (typeof messageTree !== 'undefined') {
+    displayNameOptions.messageTree = messageTree;
+  }
+
   return {
     topic,
-    label: deriveDisplayName(topic, topicChunks),
+    label: deriveTopicDisplayName(topic, displayNameOptions),
     valueText: formatMessageScalar(value),
     unit: UNIT_IDENTIFIER[topicType] ?? '',
     topicType,
@@ -200,19 +218,6 @@ export function getNewSwitchValue(item: TopicControlItem, checked: boolean): str
     return checked ? 'up' : 'down';
   }
   return checked ? 'on' : 'off';
-}
-
-/**
- * Derives a short UI label for a topic based on the current navigation depth.
- * @param topic Full topic path.
- * @param topicChunks Current overview path chunks.
- * @returns {string} Human-readable control label.
- */
-function deriveDisplayName(topic: string, topicChunks: string[]): string {
-  const topicPathChunks = splitTopic(topic);
-  const relativeChunks = topicPathChunks.slice(topicChunks.length);
-  const preferredChunk = relativeChunks.at(-1) ?? topicPathChunks.at(-1);
-  return preferredChunk ?? topic;
 }
 
 /**
