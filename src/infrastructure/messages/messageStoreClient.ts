@@ -56,7 +56,7 @@ export class MessageStoreClient {
     signal?: AbortSignal,
   ): Promise<MessageTopicData[]> {
     const endpoint = this.buildStoreEndpoint(topic);
-    const response = await fetch(endpoint, {
+    const requestInit: RequestInit = {
       method: 'GET',
       headers: {
         levelamount: String(options.levelAmount),
@@ -64,8 +64,11 @@ export class MessageStoreClient {
         history: options.history ? 'true' : 'false',
         reason: options.reason ? 'true' : 'false',
       },
-      signal,
-    });
+    };
+    if (signal !== undefined) {
+      requestInit.signal = signal;
+    }
+    const response = await fetch(endpoint, requestInit);
 
     return this.readPayloadResponse(response, endpoint);
   }
@@ -81,14 +84,17 @@ export class MessageStoreClient {
     signal?: AbortSignal,
   ): Promise<MessageTopicData[]> {
     const endpoint = new URL(this.storePath, this.baseUrl).toString();
-    const response = await fetch(endpoint, {
+    const requestInit: RequestInit = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(request),
-      signal,
-    });
+    };
+    if (signal !== undefined) {
+      requestInit.signal = signal;
+    }
+    const response = await fetch(endpoint, requestInit);
 
     return this.readPayloadResponse(response, endpoint);
   }

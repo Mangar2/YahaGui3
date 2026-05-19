@@ -1,8 +1,9 @@
 import type { MessageStoreQueryOptions, MessageTopicData } from '../../domain/messages/interfaces';
+import { PUBLISH_VERIFY_INTERVAL_MS, PUBLISH_VERIFY_TIMEOUT_MS } from '../../config/guiSettings';
 import { MessageStoreClient } from './messageStoreClient';
 
-const VERIFY_MAX_ATTEMPTS = 10;
-const VERIFY_INTERVAL_MS = 700;
+const VERIFY_INTERVAL_MS = PUBLISH_VERIFY_INTERVAL_MS;
+const VERIFY_TIMEOUT_MS = PUBLISH_VERIFY_TIMEOUT_MS;
 const VERIFY_QUERY_OPTIONS: MessageStoreQueryOptions = {
   time: false,
   history: false,
@@ -60,9 +61,9 @@ export class MessagePublishClient {
   * Publishes a new value to the configured write-target topic and waits until the value is observable via message-store.
   * @param topic Topic path without write-target suffix.
    * @param value Value that should be published.
-   * @returns {Promise<void>} Resolves after publish acknowledgement and value confirmation.
+    * @returns {Promise<MessageTopicData[]>} Resolves with the verified message-store payload.
    */
-  public async publishChange(topic: string, value: string): Promise<void> {
+    public async publishChange(topic: string, value: string): Promise<MessageTopicData[]> {
     if (topic.trim().length === 0) {
       throw new MessagePublishClientError('publish topic must not be empty', 'publish', 0);
     }
@@ -93,20 +94,25 @@ export class MessagePublishClient {
       throw new MessagePublishClientError(parsedError, endpoint, response.status);
     }
 
-    await this.waitForValue(topic, value);
+    return this.waitForValue(topic, value);
   }
 
   /**
    * Polls message-store until the published value is visible or timeout is reached.
    * @param topic Topic path.
    * @param expectedValue Expected value representation.
-   * @returns {Promise<void>} Resolves when value is visible.
+    * @returns {Promise<MessageTopicData[]>} Resolves with the payload where the expected value was confirmed.
    */
-  private async waitForValue(topic: string, expectedValue: string): Promise<void> {
-    for (let attempt = 0; attempt < VERIFY_MAX_ATTEMPTS; attempt += 1) {
+    private async waitForValue(topic: string, expectedValue: string): Promise<MessageTopicData[]> {
+    const maximumAttemptCount = Math.max(1, Math.ceil(VERIFY_TIMEOUT_MS / VERIFY_INTERVAL_MS));
+
+    for (let attempt = 0; attempt < maximumAttemptCount; attempt += 1) {
       const payload = await this.storeClient.loadTopicSection(topic, VERIFY_QUERY_OPTIONS);
       if (hasMatchingValue(payload, topic, expectedValue)) {
-        return;
+        return payload;
+      }
+      if (attempt >= maximumAttemptCount - 1) {
+        break;
       }
       await delayMilliseconds(VERIFY_INTERVAL_MS);
     }

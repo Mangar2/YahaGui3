@@ -17,6 +17,7 @@ import {
   getPublishPath,
   getPublishTopicSetSuffix,
 } from '../../../config/runtime';
+import { MAIN_REFRESH_INTERVAL_MS } from '../../../config/guiSettings';
 import { useTopicQueryState } from './useTopicQueryState';
 
 export interface MessagePathControllerState {
@@ -34,7 +35,7 @@ export interface MessagePathControllerState {
 }
 
 const OVERVIEW_LEVEL_AMOUNT = 7;
-const OVERVIEW_REFRESH_INTERVAL_MS = 2000;
+const OVERVIEW_REFRESH_INTERVAL_MS = MAIN_REFRESH_INTERVAL_MS;
 const MAX_POST_FAILURES_BEFORE_FULL_RESYNC = 2;
 const OVERVIEW_INCLUDE_TIME = false;
 const OVERVIEW_INCLUDE_HISTORY = false;
@@ -178,14 +179,17 @@ export function useMessagePathController(
         return;
       }
 
+      // Set flag SYNCHRONOUSLY before async function starts to prevent race condition
+      refreshRunningRef.current = true;
+
       // If signal is already aborted, clear the interval
       if (signal.aborted) {
         window.clearInterval(intervalId);
+        refreshRunningRef.current = false;
         return;
       }
 
       void (async (): Promise<void> => {
-        refreshRunningRef.current = true;
         try {
           const currentTopicChunks = topicChunksRef.current;
           const currentNode = getNodeByTopicChunks(messageTreeRef.current, currentTopicChunks);
@@ -286,7 +290,9 @@ export function useMessagePathController(
 
     try {
       const nextValue = getNewSwitchValue(item, checked);
-      await publishClientRef.current.publishChange(item.topic, nextValue);
+      const payload = await publishClientRef.current.publishChange(item.topic, nextValue);
+      setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
+      setLastRefreshIso(new Date().toISOString());
       setError(null);
     } catch (unknownError: unknown) {
       setError(formatPublishError(unknownError));

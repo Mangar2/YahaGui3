@@ -11,10 +11,10 @@ import {
   getPublishPath,
   getPublishTopicSetSuffix,
 } from '../../../config/runtime';
+import { DETAIL_REFRESH_INTERVAL_MS } from '../../../config/guiSettings';
 
 const DETAIL_INITIAL_LEVEL_AMOUNT = 1;
 const DETAIL_POLL_LEVEL_AMOUNT = 0;
-const DETAIL_REFRESH_INTERVAL_MS = 2000;
 
 export interface DetailTopicControllerState {
   activeNode: MessageTreeNode | null;
@@ -150,14 +150,17 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
         return;
       }
 
+      // Set flag SYNCHRONOUSLY before async function starts to prevent race condition
+      refreshRunningRef.current = true;
+
       // If signal is already aborted, clear the interval
       if (signal.aborted) {
         window.clearInterval(intervalId);
+        refreshRunningRef.current = false;
         return;
       }
 
       void (async (): Promise<void> => {
-        refreshRunningRef.current = true;
         try {
           const currentTopic = topicRef.current;
           const currentTopicChunks = splitTopic(currentTopic);
