@@ -363,7 +363,17 @@ function buildConfiguredControlItems(
     }
   }
 
-  return buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore, messageTree);
+  const configuredItems = buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore, messageTree);
+  if (configuredItems.length > 0) {
+    return configuredItems;
+  }
+
+  // Legacy parity: when selection filters leave no child controls, keep the current leaf node selectable.
+  if (topicChunks.length === 0) {
+    return configuredItems;
+  }
+
+  return buildTopicControlItemsFromNodes([activeNode], topicChunks, settingsStore, messageTree);
 }
 
 /**

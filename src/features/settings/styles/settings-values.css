@@ -305,6 +305,50 @@
   padding: 0 0.4rem;
 }
 
+.zwave-settings-card {
+  max-width: 72rem;
+}
+
+.zwave-store-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.zwave-store-grid-head {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns:
+    minmax(15rem, 3fr)
+    minmax(6rem, 0.9fr)
+    minmax(6rem, 0.9fr)
+    minmax(6rem, 0.9fr)
+    minmax(8rem, 1.2fr)
+    minmax(4.8rem, 5.2rem);
+  padding: 0 0.5rem;
+}
+
+.zwave-store-row {
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 10px;
+  background: #fcfdff;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns:
+    minmax(15rem, 3fr)
+    minmax(6rem, 0.9fr)
+    minmax(6rem, 0.9fr)
+    minmax(6rem, 0.9fr)
+    minmax(8rem, 1.2fr)
+    minmax(4.8rem, 5.2rem);
+  align-items: end;
+}
+
+.zwave-store-row:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
 @media (max-width: 44rem) {
   .settings-card {
     max-width: 100%;
@@ -322,7 +366,15 @@
     display: none;
   }
 
+  .zwave-store-grid-head {
+    display: none;
+  }
+
   .values-store-row {
+    grid-template-columns: 1fr;
+  }
+
+  .zwave-store-row {
     grid-template-columns: 1fr;
   }
 

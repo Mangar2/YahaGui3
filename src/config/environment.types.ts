@@ -5,6 +5,7 @@ export interface YahaEnvironmentConfig {
   publishTopicSetSuffix: string;
   configStorePath: string;
   valuesStoreFilename: string;
+  zwaveSettingsFilename: string;
 }
 
 export type EnvironmentProfile = 'development' | 'test' | 'production';

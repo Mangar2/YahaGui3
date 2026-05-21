@@ -3,7 +3,7 @@ import { MessagePathBreadcrumb } from '../../message-path/components/MessagePath
 import { RulesBreadcrumb } from '../../rules/components/RulesBreadcrumb';
 import type { RulePath } from '../../../domain/rules/interfaces';
 
-type HeaderViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'rules';
+type HeaderViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'zwave' | 'rules';
 
 interface AppHeaderProps {
   topicChunks: string[];
@@ -14,6 +14,7 @@ interface AppHeaderProps {
   onOpenHome: () => void;
   onOpenSettings: () => void;
   onOpenValues: () => void;
+  onOpenZwave: () => void;
   onOpenRules: () => void;
 }
 
@@ -32,6 +33,7 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
     onOpenHome,
     onOpenSettings,
     onOpenValues,
+    onOpenZwave,
     onOpenRules,
   } = props;
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -102,6 +104,14 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
   }
 
   /**
+   * Opens the Zwave view from menu action.
+   */
+  function openZwave(): void {
+    setIsMenuOpen(false);
+    onOpenZwave();
+  }
+
+  /**
    * Opens the Rules view from menu action.
    */
   function openRules(): void {
@@ -158,6 +168,15 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
               onClick={openValues}
             >
               Values Store
+            </button>
+            <button
+              className="header-menu-item header-menu-item-zwave"
+              type="button"
+              role="menuitem"
+              disabled={currentViewMode === 'zwave'}
+              onClick={openZwave}
+            >
+              Zwave
             </button>
             <button
               className="header-menu-item header-menu-item-rules"

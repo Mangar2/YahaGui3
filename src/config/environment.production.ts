@@ -7,4 +7,5 @@ export const ENVIRONMENT: YahaEnvironmentConfig = {
   publishTopicSetSuffix: '/set',
   configStorePath: '/kvstore/yaha/gui/config',
   valuesStoreFilename: '/valueservice/values',
+  zwaveSettingsFilename: '/zwave/settings',
 };

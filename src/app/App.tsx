@@ -1,20 +1,26 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
 import type { TopicControlItem } from '../domain/messages/controlElementDecisions';
 import { getSnackbarDurationMs, type SnackbarSeverity } from '../config/notificationConfigService';
-import { getConfigStoreBaseUrl, getConfigStorePath, getValuesStoreFilename } from '../config/runtime';
+import {
+  getConfigStoreBaseUrl,
+  getConfigStorePath,
+  getValuesStoreFilename,
+  getZwaveSettingsFilename,
+} from '../config/runtime';
 import { TopicSettingsStore } from '../domain/settings/interfaces';
 import { DetailViewPage } from '../features/detailview/components';
 import { AppHeader } from '../features/layout/components/AppHeader';
 import { LeftTopicNavigation } from '../features/message-path/components/LeftTopicNavigation';
 import { useMessagePathController } from '../features/message-path/hooks/useMessagePathController';
 import { RightTopicControls } from '../features/overview-controls/components/RightTopicControls';
-import { SettingsPage, ValuesStorePage } from '../features/settings/components';
+import { SettingsPage, ValuesStorePage, ZwaveSettingsPage } from '../features/settings/components';
 import { RulesPage } from '../features/rules/components';
 import { useRulesController } from '../features/rules/hooks/useRulesController';
 import { SettingsConfigClient } from '../infrastructure/settings/settingsConfigClient';
 import { ValuesStoreClient } from '../infrastructure/values/valuesStoreClient';
+import { ZwaveSettingsClient } from '../infrastructure/zwave/zwaveSettingsClient';
 
-type AppViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'rules';
+type AppViewMode = 'overview' | 'detail' | 'settings' | 'values' | 'zwave' | 'rules';
 
 interface AppViewState {
   mode: AppViewMode;
@@ -39,6 +45,9 @@ export default function App(): JSX.Element {
   );
   const valuesClientRef = useRef<ValuesStoreClient>(
     new ValuesStoreClient(getConfigStoreBaseUrl(), getValuesStoreFilename()),
+  );
+  const zwaveClientRef = useRef<ZwaveSettingsClient>(
+    new ZwaveSettingsClient(getConfigStoreBaseUrl(), getZwaveSettingsFilename()),
   );
   const rulesController = useRulesController(
     getConfigStoreBaseUrl(),
@@ -152,6 +161,14 @@ export default function App(): JSX.Element {
   }
 
   /**
+   * Opens zwave-settings mode from top-right header menu.
+   */
+  function openZwavePage(): void {
+    writeViewStateToLocation({ mode: 'zwave', detailTopic: '' });
+    setViewState({ mode: 'zwave', detailTopic: '' });
+  }
+
+  /**
    * Opens rules mode from top-right header menu.
    */
   function openRulesPage(): void {
@@ -211,6 +228,7 @@ export default function App(): JSX.Element {
         onOpenHome={openOverviewPage}
         onOpenSettings={openSettingsPage}
         onOpenValues={openValuesPage}
+        onOpenZwave={openZwavePage}
         onOpenRules={openRulesPage}
       />
 
@@ -251,6 +269,8 @@ export default function App(): JSX.Element {
         <SettingsPage settingsStore={settingsStoreRef.current} settingsClient={settingsClientRef.current} />
       ) : viewState.mode === 'values' ? (
         <ValuesStorePage valuesClient={valuesClientRef.current} />
+      ) : viewState.mode === 'zwave' ? (
+        <ZwaveSettingsPage zwaveClient={zwaveClientRef.current} />
       ) : (
         <RulesPage
           loadResult={rulesController.loadResult}
@@ -439,6 +459,12 @@ function readViewStateFromLocation(): AppViewState {
   if (view === 'values') {
     return { mode: 'values', detailTopic: '' };
   }
+  if (view === 'zwave') {
+    return { mode: 'zwave', detailTopic: '' };
+  }
+  if (view === 'rules') {
+    return { mode: 'rules', detailTopic: '' };
+  }
   return { mode: 'overview', detailTopic: '' };
 }
 
@@ -456,6 +482,12 @@ function writeViewStateToLocation(viewState: AppViewState): void {
     currentUrl.searchParams.delete('detailTopic');
   } else if (viewState.mode === 'values') {
     currentUrl.searchParams.set('view', 'values');
+    currentUrl.searchParams.delete('detailTopic');
+  } else if (viewState.mode === 'zwave') {
+    currentUrl.searchParams.set('view', 'zwave');
+    currentUrl.searchParams.delete('detailTopic');
+  } else if (viewState.mode === 'rules') {
+    currentUrl.searchParams.set('view', 'rules');
     currentUrl.searchParams.delete('detailTopic');
   } else {
     currentUrl.searchParams.delete('view');

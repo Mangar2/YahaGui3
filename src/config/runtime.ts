@@ -10,6 +10,7 @@ interface YahaGuiRuntimeConfig {
   publishTopicSetSuffix?: string;
   configStorePath?: string;
   valuesStoreFilename?: string;
+  zwaveSettingsFilename?: string;
 }
 
 /**
@@ -61,6 +62,14 @@ export function getValuesStoreFilename(): string {
 }
 
 /**
+ * Returns the configured zwave-settings filename.
+ * @returns {string} File-store filename for zwave settings payload.
+ */
+export function getZwaveSettingsFilename(): string {
+  return getApiConfig().zwaveSettingsFilename;
+}
+
+/**
  * Returns the runtime base URL for message-store calls.
  * @returns {string} Absolute base URL.
  */
@@ -98,6 +107,7 @@ export function getApiConfig(): YahaEnvironmentConfig {
     publishTopicSetSuffix: runtimeConfig.publishTopicSetSuffix ?? ENVIRONMENT.publishTopicSetSuffix,
     configStorePath: runtimeConfig.configStorePath ?? ENVIRONMENT.configStorePath,
     valuesStoreFilename: runtimeConfig.valuesStoreFilename ?? ENVIRONMENT.valuesStoreFilename,
+    zwaveSettingsFilename: runtimeConfig.zwaveSettingsFilename ?? ENVIRONMENT.zwaveSettingsFilename,
   };
 }
 
@@ -142,6 +152,11 @@ function getRuntimeConfig(): YahaGuiRuntimeConfig {
   const valuesStoreFilename = normalizeConfigPath(globalConfigValue.valuesStoreFilename);
   if (valuesStoreFilename) {
     runtimeConfig.valuesStoreFilename = valuesStoreFilename;
+  }
+
+  const zwaveSettingsFilename = normalizeConfigPath(globalConfigValue.zwaveSettingsFilename);
+  if (zwaveSettingsFilename) {
+    runtimeConfig.zwaveSettingsFilename = zwaveSettingsFilename;
   }
 
   return runtimeConfig;
