@@ -178,9 +178,44 @@ function hasMatchingValue(payload: MessageTopicData[], topic: string, expectedVa
     if (node.topic !== topic || node.value === undefined) {
       continue;
     }
-    return String(node.value) === expectedValue;
+
+    const actualValue = String(node.value);
+    if (actualValue === expectedValue) {
+      return true;
+    }
+
+    const expectedSwitchState = parseSwitchState(expectedValue);
+    if (expectedSwitchState !== null) {
+      const actualSwitchState = parseSwitchState(actualValue);
+      return actualSwitchState === expectedSwitchState;
+    }
+
+    return false;
   }
   return false;
+}
+
+/**
+ * Parses switch-like payload values into semantic on/off states.
+ * Returns null for values that are not interpreted as switch states.
+ * @param rawValue Raw value text from publish request or message-store response.
+ * @returns {'on' | 'off' | null} Parsed switch state.
+ */
+function parseSwitchState(rawValue: string): 'on' | 'off' | null {
+  const normalizedValue = rawValue.trim().toLowerCase();
+  if (normalizedValue.length === 0) {
+    return null;
+  }
+
+  if (['off', 'down', 'closed', '0', 'false'].includes(normalizedValue)) {
+    return 'off';
+  }
+
+  if (['on', 'up', 'open', '1', '99', 'true'].includes(normalizedValue)) {
+    return 'on';
+  }
+
+  return null;
 }
 
 /**
