@@ -4,6 +4,8 @@ import { ZwaveSettingsClientError, type ZwaveSettingsClient } from '../../../inf
 
 type ZwaveRequestState = 'idle' | 'loading' | 'saving';
 
+const ZWAVE_TEXT_COLLATOR = new Intl.Collator('de', { numeric: true, sensitivity: 'base' });
+
 interface ZwaveSettingsRow {
   id: string;
   topic: string;
@@ -386,7 +388,9 @@ function createRowId(): string {
  * @returns {ZwaveSettingsRow[]} Row list.
  */
 function mapPayloadToRows(payload: ZwaveSettingsPayload): ZwaveSettingsRow[] {
-  return payload.devices.map((device: ZwaveDeviceMapping): ZwaveSettingsRow => {
+  const sortedDevices = [...payload.devices].sort(compareZwaveDeviceMappings);
+
+  return sortedDevices.map((device: ZwaveDeviceMapping): ZwaveSettingsRow => {
     const nodeIdText = typeof device.nodeId === 'number' ? String(device.nodeId) : '';
     const classIdText = typeof device.classId === 'number' ? String(device.classId) : '';
     const instanceText = typeof device.instance === 'number' ? String(device.instance) : '';
@@ -406,6 +410,87 @@ function mapPayloadToRows(payload: ZwaveSettingsPayload): ZwaveSettingsRow[] {
       initialType: type,
     };
   });
+}
+
+/**
+ * Sorts zwave mappings for stable menu display.
+ * Priority: node id, class id, instance, type. Empty values are ordered before concrete values.
+ * @param left Left mapping.
+ * @param right Right mapping.
+ * @returns {number} Sort comparison result.
+ */
+function compareZwaveDeviceMappings(left: ZwaveDeviceMapping, right: ZwaveDeviceMapping): number {
+  const byNode = compareOptionalNumber(left.nodeId, right.nodeId);
+  if (byNode !== 0) {
+    return byNode;
+  }
+
+  const byClass = compareOptionalNumber(left.classId, right.classId);
+  if (byClass !== 0) {
+    return byClass;
+  }
+
+  const byInstance = compareOptionalNumber(left.instance, right.instance);
+  if (byInstance !== 0) {
+    return byInstance;
+  }
+
+  const byType = compareOptionalText(left.type, right.type);
+  if (byType !== 0) {
+    return byType;
+  }
+
+  return ZWAVE_TEXT_COLLATOR.compare(left.topic, right.topic);
+}
+
+/**
+ * Compares optional numeric values with empty-first behavior.
+ * @param left Left value.
+ * @param right Right value.
+ * @returns {number} Sort comparison result.
+ */
+function compareOptionalNumber(left: number | undefined, right: number | undefined): number {
+  if (typeof left !== 'number' && typeof right !== 'number') {
+    return 0;
+  }
+
+  if (typeof left !== 'number') {
+    return -1;
+  }
+
+  if (typeof right !== 'number') {
+    return 1;
+  }
+
+  return left - right;
+}
+
+/**
+ * Compares optional text values with empty-first behavior.
+ * @param left Left value.
+ * @param right Right value.
+ * @returns {number} Sort comparison result.
+ */
+function compareOptionalText(left: string | undefined, right: string | undefined): number {
+  const leftTrimmed = typeof left === 'string' ? left.trim() : '';
+  const rightTrimmed = typeof right === 'string' ? right.trim() : '';
+
+  const leftEmpty = leftTrimmed.length === 0;
+  const rightEmpty = rightTrimmed.length === 0;
+
+  if (leftEmpty && rightEmpty) {
+    return 0;
+  }
+
+  if (leftEmpty) {
+    return -1;
+  }
+
+  if (rightEmpty) {
+    return 1;
+  }
+
+  return ZWAVE_TEXT_COLLATOR.compare(leftTrimmed, rightTrimmed);
 }
 
 /**
