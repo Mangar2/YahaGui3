@@ -173,6 +173,20 @@
   background: #f8fbff;
 }
 
+@media (min-width: 72.01rem) {
+  .values-store-row {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+
+  .values-store-row:hover {
+    border-color: transparent;
+    background: transparent;
+  }
+}
+
 .values-store-cell {
   display: grid;
   gap: 0.3rem;
@@ -201,6 +215,13 @@
   color: #1f2937;
   padding: 0.2rem 0.5rem;
   font-size: 0.9rem;
+}
+
+.values-store-input,
+.values-store-select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .values-store-input:hover,
@@ -349,6 +370,50 @@
   background: #f8fbff;
 }
 
+@media (min-width: 72.01rem) {
+  .zwave-store-row {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+
+  .zwave-store-row:hover {
+    border-color: transparent;
+    background: transparent;
+  }
+}
+
+@media (max-width: 72rem) {
+  .zwave-store-grid-head {
+    display: none;
+  }
+
+  .zwave-store-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .zwave-store-row .zwave-store-col-topic {
+    grid-column: 1 / -1;
+  }
+
+  .zwave-store-row .values-store-col-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .zwave-store-row .values-store-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .zwave-store-row .values-store-cell-label {
+    display: inline-block;
+  }
+}
+
 @media (max-width: 44rem) {
   .settings-card {
     max-width: 100%;
@@ -363,10 +428,6 @@
   }
 
   .values-store-grid-head {
-    display: none;
-  }
-
-  .zwave-store-grid-head {
     display: none;
   }
 

@@ -506,11 +506,6 @@ function validateRows(rows: ZwaveSettingsRow[]): RowValidationErrors {
       continue;
     }
 
-    if (topic.includes(' ')) {
-      validationErrors[row.id] = 'Topic darf keine Leerzeichen enthalten.';
-      continue;
-    }
-
     try {
       void parseDeviceFromRow(row);
     } catch (error: unknown) {
