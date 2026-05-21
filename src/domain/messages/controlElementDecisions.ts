@@ -11,6 +11,8 @@ export interface TopicControlItem {
   valueText: string;
   unit: string;
   topicType: string;
+  valueType: string;
+  enumeration: string[];
   isSwitch: boolean;
   isSwitchOn: boolean;
   iconAsset: ControlIconAsset;
@@ -135,9 +137,16 @@ function buildControlItem(
 ): TopicControlItem {
   const topic = node.topic ?? '';
   const value = node.value ?? null;
-  const topicType = decideTopicType(topic, value);
-  const isSwitch = isSwitchType(topicType, value);
-  const isSwitchOn = isSwitchOnValue(topicType, value);
+
+  const navSettings = settingsStore ? settingsStore.getNavSettings(splitTopic(topic)) : null;
+  const configuredTopicType = navSettings?.getTopicType() ?? 'Automatic';
+  const configuredValueType = navSettings?.getValueType() ?? 'Automatic';
+  const enumeration = navSettings?.getEnumList() ?? [];
+
+  const topicType = decideTopicType(configuredTopicType, topic, value);
+  const valueType = decideValueType(configuredValueType, value);
+  const isSwitch = isSwitchType(topicType, value, valueType);
+  const isSwitchOn = isSwitchOnValue(topicType, value, valueType, enumeration);
   const iconName = getConfiguredIconName(topic, settingsStore);
 
   const displayNameOptions: {
@@ -160,6 +169,8 @@ function buildControlItem(
     valueText: formatMessageScalar(value),
     unit: UNIT_IDENTIFIER[topicType] ?? '',
     topicType,
+    valueType,
+    enumeration,
     isSwitch,
     isSwitchOn,
     iconAsset: decideIconAsset(iconName, topic, String(value ?? '')),
@@ -217,6 +228,11 @@ export function getNewSwitchValue(item: TopicControlItem, checked: boolean): str
   if (item.topicType === 'Roller') {
     return checked ? 'up' : 'down';
   }
+
+  if (item.topicType === 'Parameter' && item.valueType === 'Enumeration' && item.enumeration.length > 1) {
+    return checked ? item.enumeration[0] : item.enumeration[1];
+  }
+
   return checked ? 'on' : 'off';
 }
 
@@ -233,12 +249,17 @@ function formatMessageScalar(value: MessageScalar): string {
 }
 
 /**
- * Decides an automatic topic type based on topic path and value.
+ * Decides topic type with legacy-compatible automatic behavior.
+ * @param configuredTopicType Topic type configured in settings.
  * @param topic Full topic path.
  * @param value Current topic value.
  * @returns {string} Decided topic type.
  */
-function decideTopicType(topic: string, value: MessageScalar): string {
+function decideTopicType(configuredTopicType: string, topic: string, value: MessageScalar): string {
+  if (configuredTopicType !== 'Automatic') {
+    return configuredTopicType.length > 0 ? configuredTopicType : 'Information';
+  }
+
   const lastChunk = splitTopic(topic).at(-1)?.toLowerCase() ?? '';
 
   for (const [identifier, mappedType] of Object.entries(TYPE_IDENTIFIER)) {
@@ -254,12 +275,31 @@ function decideTopicType(topic: string, value: MessageScalar): string {
 }
 
 /**
+ * Decides value type with legacy-compatible automatic fallback.
+ * @param configuredValueType Value type configured in settings.
+ * @param value Current topic value.
+ * @returns {string} Decided value type.
+ */
+function decideValueType(configuredValueType: string, value: MessageScalar): string {
+  void value;
+  if (configuredValueType === 'Automatic' || configuredValueType.length === 0) {
+    return 'String';
+  }
+  return configuredValueType;
+}
+
+/**
  * Checks whether a topic should be rendered as a switch control.
  * @param topicType Decided topic type.
  * @param value Current topic value.
+ * @param valueType Decided value type.
  * @returns {boolean} True when switch UI is appropriate.
  */
-function isSwitchType(topicType: string, value: MessageScalar): boolean {
+function isSwitchType(topicType: string, value: MessageScalar, valueType: string): boolean {
+  if (valueType.toLowerCase() === 'enumeration') {
+    return true;
+  }
+
   return SWITCH_TOPIC_TYPES.has(topicType) || isSwitchLikeValue(value);
 }
 
@@ -267,13 +307,29 @@ function isSwitchType(topicType: string, value: MessageScalar): boolean {
  * Determines whether a switch-like topic is currently considered active.
  * @param topicType Decided topic type.
  * @param value Current topic value.
+ * @param valueType Decided value type.
+ * @param enumList Enumeration list for parameter mode.
  * @returns {boolean} True when interpreted as switched on.
  */
-function isSwitchOnValue(topicType: string, value: MessageScalar): boolean {
+function isSwitchOnValue(topicType: string, value: MessageScalar, valueType: string, enumList: string[]): boolean {
   const valueLower = String(value ?? '').toLowerCase();
+
+  if (valueLower.length === 0) {
+    return false;
+  }
+
   if (topicType === 'Roller') {
     return valueLower !== 'down' && valueLower !== '0' && valueLower !== 'closed';
   }
+
+  if (topicType === 'Parameter') {
+    if (valueType !== 'Enumeration') {
+      return true;
+    }
+    const isOffState = enumList.slice(1).some((entry: string): boolean => valueLower === entry.toLowerCase());
+    return !isOffState;
+  }
+
   return !['off', '0', 'false', 'down', 'closed'].includes(valueLower);
 }
 
