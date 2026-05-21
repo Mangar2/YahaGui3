@@ -39,6 +39,7 @@ interface SnackbarState {
  */
 export default function App(): JSX.Element {
   const [viewState, setViewState] = useState<AppViewState>(readViewStateFromLocation());
+  const [, setOverviewConfigurationRevision] = useState<number>(0);
   const settingsStoreRef = useRef<TopicSettingsStore>(new TopicSettingsStore());
   const settingsClientRef = useRef<SettingsConfigClient>(
     new SettingsConfigClient(getConfigStoreBaseUrl(), getConfigStorePath()),
@@ -215,6 +216,13 @@ export default function App(): JSX.Element {
     removeSnackbar(topSnackbar.id);
   }
 
+  /**
+   * Re-renders overview after left-navigation configuration changes.
+   */
+  function onOverviewConfigurationChanged(): void {
+    setOverviewConfigurationRevision((currentRevision: number): number => currentRevision + 1);
+  }
+
   const localizedLastRefreshTime = formatLocalizedTime(lastRefreshIso);
 
   return (
@@ -234,7 +242,13 @@ export default function App(): JSX.Element {
 
       {viewState.mode === 'overview' ? (
         <section className="overview-layout" aria-live="polite">
-          <LeftTopicNavigation navItems={navItems} onSelectNavItem={selectNavItem} />
+          <LeftTopicNavigation
+            navItems={navItems}
+            topicChunks={topicChunks}
+            settingsStore={settingsStoreRef.current}
+            onSelectNavItem={selectNavItem}
+            onConfigurationChanged={onOverviewConfigurationChanged}
+          />
           <div className="app-panel app-panel-controls">
             <RightTopicControls
               controlItems={controlItems}
