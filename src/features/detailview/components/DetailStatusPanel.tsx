@@ -178,10 +178,11 @@ function buildStatusViewModel(
   const topicName = topicChunks.at(-1) ?? 'unknown';
   const currentValueText = String(topicNode?.value ?? '');
   const navSettings = settingsStore.getNavSettings(topicChunks);
+  const configuredTopicType = navSettings.getTopicType();
 
-  let topicType = decideTopicType(navSettings.getTopicType(), topicName, currentValueText);
+  let topicType = decideTopicType(configuredTopicType, topicName, currentValueText);
   const updatable = isTopicUpdatable(topicNode);
-  if (navSettings.getTopicType() === 'Automatic' && topicType === 'Information' && updatable) {
+  if (configuredTopicType === 'Automatic' && topicType === 'Information' && updatable) {
     topicType = 'Parameter';
   }
 
