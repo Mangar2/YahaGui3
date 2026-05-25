@@ -17,7 +17,7 @@ export const DETAIL_REFRESH_INTERVAL_MS = 2000;
 export const PUBLISH_VERIFY_INTERVAL_MS = 700;
 
 /**
- * Maximum total wait time for publish verification before timeout error.
- * Effective attempt count is derived from timeout / interval.
+ * Default number of publish verification attempts.
+ * Legacy detail behavior uses 15 polling attempts.
  */
-export const PUBLISH_VERIFY_TIMEOUT_MS = 25 * 700;
+export const PUBLISH_VERIFY_ATTEMPTS = 15;

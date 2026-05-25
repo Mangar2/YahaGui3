@@ -56,7 +56,7 @@ export function RightTopicControls(props: RightTopicControlsProps): JSX.Element 
                   </label>
                 ) : (
                   <span className="control-card-value" title={`${item.valueText} ${item.unit}`.trim()}>
-                    {item.valueText}
+                    {trimCardValue(item.valueText)}
                     {item.unit.length > 0 ? ` ${item.unit}` : ''}
                   </span>
                 )}
@@ -68,6 +68,20 @@ export function RightTopicControls(props: RightTopicControlsProps): JSX.Element 
       })}
     </section>
   );
+}
+
+/**
+ * Trims one control-card value using legacy overview behavior.
+ * @param valueText Raw value text.
+ * @param maxLength Maximum display length before ellipsis.
+ * @returns {string} Trimmed value text.
+ */
+function trimCardValue(valueText: string, maxLength: number = 45): string {
+  if (valueText.length <= maxLength) {
+    return valueText;
+  }
+
+  return `${valueText.slice(0, maxLength - 4)}...`;
 }
 
 /**

@@ -1,9 +1,9 @@
 import type { MessageStoreQueryOptions, MessageTopicData } from '../../domain/messages/interfaces';
-import { PUBLISH_VERIFY_INTERVAL_MS, PUBLISH_VERIFY_TIMEOUT_MS } from '../../config/guiSettings';
+import { PUBLISH_VERIFY_ATTEMPTS, PUBLISH_VERIFY_INTERVAL_MS } from '../../config/guiSettings';
 import { MessageStoreClient } from './messageStoreClient';
 
 const VERIFY_INTERVAL_MS = PUBLISH_VERIFY_INTERVAL_MS;
-const VERIFY_TIMEOUT_MS = PUBLISH_VERIFY_TIMEOUT_MS;
+const DEFAULT_VERIFY_ATTEMPT_COUNT = PUBLISH_VERIFY_ATTEMPTS;
 const VERIFY_QUERY_OPTIONS: MessageStoreQueryOptions = {
   time: false,
   history: false,
@@ -63,7 +63,11 @@ export class MessagePublishClient {
    * @param value Value that should be published.
     * @returns {Promise<MessageTopicData[]>} Resolves with the verified message-store payload.
    */
-    public async publishChange(topic: string, value: string): Promise<MessageTopicData[]> {
+    public async publishChange(
+    topic: string,
+    value: string,
+    verifyAttemptCount: number = DEFAULT_VERIFY_ATTEMPT_COUNT,
+  ): Promise<MessageTopicData[]> {
     if (topic.trim().length === 0) {
       throw new MessagePublishClientError('publish topic must not be empty', 'publish', 0);
     }
@@ -94,7 +98,7 @@ export class MessagePublishClient {
       throw new MessagePublishClientError(parsedError, endpoint, response.status);
     }
 
-    return this.waitForValue(topic, value);
+    return this.waitForValue(topic, value, verifyAttemptCount);
   }
 
   /**
@@ -103,8 +107,8 @@ export class MessagePublishClient {
    * @param expectedValue Expected value representation.
     * @returns {Promise<MessageTopicData[]>} Resolves with the payload where the expected value was confirmed.
    */
-    private async waitForValue(topic: string, expectedValue: string): Promise<MessageTopicData[]> {
-    const maximumAttemptCount = Math.max(1, Math.ceil(VERIFY_TIMEOUT_MS / VERIFY_INTERVAL_MS));
+    private async waitForValue(topic: string, expectedValue: string, verifyAttemptCount: number): Promise<MessageTopicData[]> {
+    const maximumAttemptCount = Math.max(1, Math.floor(verifyAttemptCount));
 
     for (let attempt = 0; attempt < maximumAttemptCount; attempt += 1) {
       const payload = await this.storeClient.loadTopicSection(topic, VERIFY_QUERY_OPTIONS);
@@ -173,49 +177,16 @@ function isPublishErrorResponse(value: unknown): value is { error: string } {
  * @param expectedValue Expected value representation.
  * @returns {boolean} True when the expected value is visible.
  */
-function hasMatchingValue(payload: MessageTopicData[], topic: string, expectedValue: string): boolean {
+export function hasMatchingValue(payload: MessageTopicData[], topic: string, expectedValue: string): boolean {
   for (const node of payload) {
     if (node.topic !== topic || node.value === undefined) {
       continue;
     }
 
     const actualValue = String(node.value);
-    if (actualValue === expectedValue) {
-      return true;
-    }
-
-    const expectedSwitchState = parseSwitchState(expectedValue);
-    if (expectedSwitchState !== null) {
-      const actualSwitchState = parseSwitchState(actualValue);
-      return actualSwitchState === expectedSwitchState;
-    }
-
-    return false;
+    return actualValue === expectedValue;
   }
   return false;
-}
-
-/**
- * Parses switch-like payload values into semantic on/off states.
- * Returns null for values that are not interpreted as switch states.
- * @param rawValue Raw value text from publish request or message-store response.
- * @returns {'on' | 'off' | null} Parsed switch state.
- */
-function parseSwitchState(rawValue: string): 'on' | 'off' | null {
-  const normalizedValue = rawValue.trim().toLowerCase();
-  if (normalizedValue.length === 0) {
-    return null;
-  }
-
-  if (['off', 'down', 'closed', '0', 'false'].includes(normalizedValue)) {
-    return 'off';
-  }
-
-  if (['on', 'up', 'open', '1', '99', 'true'].includes(normalizedValue)) {
-    return 'on';
-  }
-
-  return null;
 }
 
 /**

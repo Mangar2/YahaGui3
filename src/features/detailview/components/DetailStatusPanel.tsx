@@ -86,7 +86,7 @@ export function DetailStatusPanel(props: DetailStatusPanelProps): JSX.Element {
   return (
     <section className="detail-status-panel" aria-label="Status panel">
       <h3>{statusModel.beautifiedTopicName}</h3>
-      <p>{statusModel.beautifiedTopicName} (Type: {statusModel.topicType})</p>
+      <p>{statusModel.topicName} (Type: {statusModel.topicType})</p>
 
       {statusModel.topicType !== 'Parameter' && !statusModel.switchControl ? (
         <p className="detail-status-value">

@@ -15,6 +15,7 @@ import { DETAIL_REFRESH_INTERVAL_MS } from '../../../config/guiSettings';
 
 const DETAIL_INITIAL_LEVEL_AMOUNT = 1;
 const DETAIL_POLL_LEVEL_AMOUNT = 0;
+const DETAIL_PUBLISH_VERIFY_ATTEMPTS = 15;
 
 export interface DetailTopicControllerState {
   messageTree: MessageTreeNode;
@@ -246,7 +247,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
 
     setIsUpdatingTopic(true);
     try {
-      await publishClientRef.current.publishChange(topic, newValue);
+      await publishClientRef.current.publishChange(topic, newValue, DETAIL_PUBLISH_VERIFY_ATTEMPTS);
 
       const payload = await storeClientRef.current.loadTopicSection(topic, {
         time: true,

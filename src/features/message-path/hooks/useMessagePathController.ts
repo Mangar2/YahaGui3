@@ -40,6 +40,7 @@ const MAX_POST_FAILURES_BEFORE_FULL_RESYNC = 2;
 const OVERVIEW_INCLUDE_TIME = false;
 const OVERVIEW_INCLUDE_HISTORY = false;
 const OVERVIEW_INCLUDE_REASON = false;
+const OVERVIEW_PUBLISH_VERIFY_ATTEMPTS = 10;
 
 /**
  * Controls loading and refreshing the currently active message path.
@@ -70,6 +71,7 @@ export function useMessagePathController(
   const topicChunksRef = useRef<string[]>(topicChunks);
   const messageTreeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
   const consecutivePostFailuresRef = useRef<number>(0);
+  const pendingPublishTopicsRef = useRef<Record<string, boolean>>({});
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [messageTree, setMessageTree] = useState<MessageTreeNode>(createEmptyMessageTree());
@@ -104,6 +106,10 @@ export function useMessagePathController(
   useEffect((): void => {
     consecutivePostFailuresRef.current = consecutivePostFailures;
   }, [consecutivePostFailures]);
+
+  useEffect((): void => {
+    pendingPublishTopicsRef.current = pendingPublishTopics;
+  }, [pendingPublishTopics]);
 
   useEffect((): (() => void) => {
     if (!isActive) {
@@ -176,6 +182,10 @@ export function useMessagePathController(
       }
 
       if (!isActiveRef.current) {
+        return;
+      }
+
+      if (hasPendingPublish(pendingPublishTopicsRef.current)) {
         return;
       }
 
@@ -290,7 +300,7 @@ export function useMessagePathController(
 
     try {
       const nextValue = getNewSwitchValue(item, checked);
-      const payload = await publishClientRef.current.publishChange(item.topic, nextValue);
+      const payload = await publishClientRef.current.publishChange(item.topic, nextValue, OVERVIEW_PUBLISH_VERIFY_ATTEMPTS);
       setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
       setLastRefreshIso(new Date().toISOString());
       setError(null);
@@ -320,6 +330,15 @@ export function useMessagePathController(
 }
 
 /**
+ * Checks whether any topic has a pending publish operation.
+ * @param pendingPublishTopics Pending map indexed by topic.
+ * @returns {boolean} True when at least one topic is pending.
+ */
+export function hasPendingPublish(pendingPublishTopics: Record<string, boolean>): boolean {
+  return Object.values(pendingPublishTopics).some((isPending: boolean): boolean => isPending);
+}
+
+/**
  * Builds overview control items with legacy settings behavior:
  * - direct child controls filtered by node-enabled flags
  * - additional controls selected by topicRank and descendant depth
@@ -329,7 +348,7 @@ export function useMessagePathController(
  * @param settingsStore Shared settings store.
  * @returns {TopicControlItem[]} Final control item list.
  */
-function buildConfiguredControlItems(
+export function buildConfiguredControlItems(
   messageTree: MessageTreeNode,
   activeNode: MessageTreeNode | null,
   topicChunks: string[],
@@ -363,17 +382,7 @@ function buildConfiguredControlItems(
     }
   }
 
-  const configuredItems = buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore, messageTree);
-  if (configuredItems.length > 0) {
-    return configuredItems;
-  }
-
-  // Legacy parity: when selection filters leave no child controls, keep the current leaf node selectable.
-  if (topicChunks.length === 0) {
-    return configuredItems;
-  }
-
-  return buildTopicControlItemsFromNodes([activeNode], topicChunks, settingsStore, messageTree);
+  return buildTopicControlItemsFromNodes(selectedNodes, topicChunks, settingsStore, messageTree);
 }
 
 /**
