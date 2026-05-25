@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildTopicControlItemsFromNodes,
+  deriveSwitchOnState,
   getNewSwitchValue,
   type TopicControlItem,
 } from '../../../domain/messages/controlElementDecisions';
-import { createEmptyMessageTree, getNodeByTopic, getNodeByTopicChunks, replaceManyNodes } from '../../../domain/messages/messageTree';
-import type { MessageStoreDirectRequest, MessageTreeNode, MessageTopicData } from '../../../domain/messages/interfaces';
+import { createEmptyMessageTree, getNodeByTopic, getNodeByTopicChunks } from '../../../domain/messages/messageTree';
+import { getMessageRuntimeStore } from '../../../domain/messages/messageRuntimeStore';
+import type { MessageStoreDirectRequest, MessageTreeNode } from '../../../domain/messages/interfaces';
 import { joinTopic, splitTopic } from '../../../domain/messages/topicPath';
 import type { TopicSettingsStore } from '../../../domain/settings/interfaces';
 import { MessageStoreClient, MessageStoreClientError } from '../../../infrastructure/messages/messageStoreClient';
@@ -69,12 +71,13 @@ export function useMessagePathController(
   const refreshRunningRef = useRef<boolean>(false);
   const isActiveRef = useRef<boolean>(isActive);
   const topicChunksRef = useRef<string[]>(topicChunks);
-  const messageTreeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
+  const runtimeStoreRef = useRef(getMessageRuntimeStore());
+  const messageTreeRef = useRef<MessageTreeNode>(runtimeStoreRef.current.getSnapshot());
   const consecutivePostFailuresRef = useRef<number>(0);
   const pendingPublishTopicsRef = useRef<Record<string, boolean>>({});
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const [messageTree, setMessageTree] = useState<MessageTreeNode>(createEmptyMessageTree());
+  const [messageTree, setMessageTree] = useState<MessageTreeNode>(runtimeStoreRef.current.getSnapshot());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshIso, setLastRefreshIso] = useState<string | null>(null);
@@ -99,9 +102,13 @@ export function useMessagePathController(
     isActiveRef.current = isActive;
   }, [isActive]);
 
-  useEffect((): void => {
-    messageTreeRef.current = messageTree;
-  }, [messageTree]);
+  useEffect((): (() => void) => {
+    const unsubscribe = runtimeStoreRef.current.subscribe((snapshot: MessageTreeNode): void => {
+      messageTreeRef.current = snapshot;
+      setMessageTree(snapshot);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect((): void => {
     consecutivePostFailuresRef.current = consecutivePostFailures;
@@ -137,7 +144,7 @@ export function useMessagePathController(
         if (cancelled || signal.aborted) {
           return;
         }
-        setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
+        runtimeStoreRef.current.ingest(payload);
         setLastRefreshIso(new Date().toISOString());
         setConsecutivePostFailures(0);
         setError(null);
@@ -225,7 +232,7 @@ export function useMessagePathController(
             return;
           }
 
-          setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
+          runtimeStoreRef.current.ingest(payload);
           setLastRefreshIso(new Date().toISOString());
           setConsecutivePostFailures(0);
           setError(null);
@@ -300,8 +307,15 @@ export function useMessagePathController(
 
     try {
       const nextValue = getNewSwitchValue(item, checked);
-      const payload = await publishClientRef.current.publishChange(item.topic, nextValue, OVERVIEW_PUBLISH_VERIFY_ATTEMPTS);
-      setMessageTree((currentTree: MessageTreeNode): MessageTreeNode => replaceManyNodes(currentTree, payload));
+      await publishClientRef.current.publishChange(item.topic, nextValue, OVERVIEW_PUBLISH_VERIFY_ATTEMPTS, {
+        matchesExpectedValue: (actualValue: string | null): boolean => {
+          if (actualValue === null) {
+            return false;
+          }
+          const actualSwitchState = deriveSwitchOnState(item.topicType, actualValue, item.valueType, item.enumeration);
+          return actualSwitchState === checked;
+        },
+      });
       setLastRefreshIso(new Date().toISOString());
       setError(null);
     } catch (unknownError: unknown) {

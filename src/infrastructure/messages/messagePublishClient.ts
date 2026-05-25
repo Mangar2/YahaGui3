@@ -1,4 +1,6 @@
-import type { MessageStoreQueryOptions, MessageTopicData } from '../../domain/messages/interfaces';
+import type { MessageStoreQueryOptions, MessageTopicData, MessageTreeNode } from '../../domain/messages/interfaces';
+import { getNodeByTopic } from '../../domain/messages/messageTree';
+import { getMessageRuntimeStore } from '../../domain/messages/messageRuntimeStore';
 import { PUBLISH_VERIFY_ATTEMPTS, PUBLISH_VERIFY_INTERVAL_MS } from '../../config/guiSettings';
 import { MessageStoreClient } from './messageStoreClient';
 
@@ -10,6 +12,10 @@ const VERIFY_QUERY_OPTIONS: MessageStoreQueryOptions = {
   reason: false,
   levelAmount: 0,
 };
+
+export interface PublishVerificationOptions {
+  matchesExpectedValue?: (actualValue: string | null, expectedValue: string) => boolean;
+}
 
 /**
  * Error thrown when publish communication fails.
@@ -41,6 +47,7 @@ export class MessagePublishClient {
   private readonly storePath: string;
   private readonly topicSetSuffix: string;
   private readonly storeClient: MessageStoreClient;
+  private readonly runtimeStore = getMessageRuntimeStore();
 
   /**
    * Creates a publish client.
@@ -67,6 +74,7 @@ export class MessagePublishClient {
     topic: string,
     value: string,
     verifyAttemptCount: number = DEFAULT_VERIFY_ATTEMPT_COUNT,
+      options?: PublishVerificationOptions,
   ): Promise<MessageTopicData[]> {
     if (topic.trim().length === 0) {
       throw new MessagePublishClientError('publish topic must not be empty', 'publish', 0);
@@ -98,7 +106,7 @@ export class MessagePublishClient {
       throw new MessagePublishClientError(parsedError, endpoint, response.status);
     }
 
-    return this.waitForValue(topic, value, verifyAttemptCount);
+    return this.waitForValue(topic, value, verifyAttemptCount, options);
   }
 
   /**
@@ -107,18 +115,35 @@ export class MessagePublishClient {
    * @param expectedValue Expected value representation.
     * @returns {Promise<MessageTopicData[]>} Resolves with the payload where the expected value was confirmed.
    */
-    private async waitForValue(topic: string, expectedValue: string, verifyAttemptCount: number): Promise<MessageTopicData[]> {
+    private async waitForValue(
+    topic: string,
+    expectedValue: string,
+    verifyAttemptCount: number,
+      options?: PublishVerificationOptions,
+  ): Promise<MessageTopicData[]> {
     const maximumAttemptCount = Math.max(1, Math.floor(verifyAttemptCount));
+      let verifiedPayload: MessageTopicData[] | null = null;
+      const unregisterWaiter = this.runtimeStore.registerWaiter(
+          (snapshot: MessageTreeNode): boolean => hasMatchingValueInTree(snapshot, topic, expectedValue, options),
+        (_snapshot: MessageTreeNode, payload: MessageTopicData[]): void => {
+          verifiedPayload = payload;
+        },
+      );
 
-    for (let attempt = 0; attempt < maximumAttemptCount; attempt += 1) {
-      const payload = await this.storeClient.loadTopicSection(topic, VERIFY_QUERY_OPTIONS);
-      if (hasMatchingValue(payload, topic, expectedValue)) {
-        return payload;
+      try {
+        for (let attempt = 0; attempt < maximumAttemptCount; attempt += 1) {
+          const payload = await this.storeClient.loadTopicSection(topic, VERIFY_QUERY_OPTIONS);
+          this.runtimeStore.ingest(payload);
+          if (verifiedPayload !== null) {
+            return verifiedPayload;
+          }
+          if (attempt >= maximumAttemptCount - 1) {
+            break;
+          }
+          await delayMilliseconds(VERIFY_INTERVAL_MS);
       }
-      if (attempt >= maximumAttemptCount - 1) {
-        break;
-      }
-      await delayMilliseconds(VERIFY_INTERVAL_MS);
+      } finally {
+        unregisterWaiter();
     }
 
     throw new MessagePublishClientError(
@@ -187,6 +212,27 @@ export function hasMatchingValue(payload: MessageTopicData[], topic: string, exp
     return actualValue === expectedValue;
   }
   return false;
+}
+
+/**
+ * Checks whether a continuously updated message tree contains topic with expected value.
+ * @param verificationTree Verification tree updated with each poll response.
+ * @param topic Topic path to match.
+ * @param expectedValue Expected value representation.
+ * @returns {boolean} True when the expected value is visible in the verification tree.
+ */
+export function hasMatchingValueInTree(
+  verificationTree: MessageTreeNode,
+  topic: string,
+  expectedValue: string,
+  options?: PublishVerificationOptions,
+): boolean {
+  const topicNode = getNodeByTopic(verificationTree, topic);
+  const actualValue = topicNode && topicNode.value !== undefined ? String(topicNode.value) : null;
+  if (options?.matchesExpectedValue) {
+    return options.matchesExpectedValue(actualValue, expectedValue);
+  }
+  return actualValue === expectedValue;
 }
 
 /**

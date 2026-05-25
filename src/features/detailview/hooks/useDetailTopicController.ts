@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createEmptyMessageTree, getNodeByTopicChunks, replaceManyNodes } from '../../../domain/messages/messageTree';
+import { getNodeByTopicChunks } from '../../../domain/messages/messageTree';
+import { getMessageRuntimeStore } from '../../../domain/messages/messageRuntimeStore';
 import type { MessageTreeNode } from '../../../domain/messages/interfaces';
 import { splitTopic } from '../../../domain/messages/topicPath';
 import { MessageStoreClient, MessageStoreClientError } from '../../../infrastructure/messages/messageStoreClient';
@@ -47,13 +48,14 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
     ),
   );
 
-  const treeRef = useRef<MessageTreeNode>(createEmptyMessageTree());
+  const runtimeStoreRef = useRef(getMessageRuntimeStore());
+  const treeRef = useRef<MessageTreeNode>(runtimeStoreRef.current.getSnapshot());
   const topicRef = useRef<string>(topic);
   const refreshRunningRef = useRef<boolean>(false);
   const isUpdatingRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const [tree, setTree] = useState<MessageTreeNode>(createEmptyMessageTree());
+  const [tree, setTree] = useState<MessageTreeNode>(runtimeStoreRef.current.getSnapshot());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdatingTopic, setIsUpdatingTopic] = useState<boolean>(false);
   const [lastRefreshIso, setLastRefreshIso] = useState<string | null>(null);
@@ -64,8 +66,12 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
   }, [tree, topicChunks]);
 
   useEffect((): void => {
-    treeRef.current = tree;
-  }, [tree]);
+    const unsubscribe = runtimeStoreRef.current.subscribe((snapshot: MessageTreeNode): void => {
+      treeRef.current = snapshot;
+      setTree(snapshot);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect((): void => {
     topicRef.current = topic;
@@ -74,10 +80,6 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
   useEffect((): void => {
     isUpdatingRef.current = isUpdatingTopic;
   }, [isUpdatingTopic]);
-
-  useEffect((): void => {
-    setTree(createEmptyMessageTree());
-  }, [topic]);
 
   useEffect((): (() => void) => {
     // Cancel any previous request when topic changes
@@ -114,8 +116,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
           return;
         }
 
-        const nextTree = replaceManyNodes(createEmptyMessageTree(), payload);
-        setTree(nextTree);
+        runtimeStoreRef.current.ingest(payload);
         setLastRefreshIso(new Date().toISOString());
         setError(null);
       } catch (unknownError: unknown) {
@@ -184,8 +185,8 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
             return;
           }
 
-          let nextTree = replaceManyNodes(treeRef.current, valuePayload);
-          const refreshedNode = getNodeByTopicChunks(nextTree, currentTopicChunks);
+          runtimeStoreRef.current.ingest(valuePayload);
+          const refreshedNode = getNodeByTopicChunks(runtimeStoreRef.current.getSnapshot(), currentTopicChunks);
           const hasTimestampUpdate =
             typeof refreshedNode?.time === 'string' &&
             refreshedNode.time.length > 0 &&
@@ -208,10 +209,9 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
               return;
             }
 
-            nextTree = replaceManyNodes(nextTree, historyPayload);
+            runtimeStoreRef.current.ingest(historyPayload);
           }
 
-          setTree(nextTree);
           setLastRefreshIso(new Date().toISOString());
           setError(null);
         } catch (unknownError: unknown) {
@@ -255,9 +255,7 @@ export function useDetailTopicController(topic: string): DetailTopicControllerSt
         reason: true,
         levelAmount: DETAIL_INITIAL_LEVEL_AMOUNT,
       });
-      setTree((currentTree: MessageTreeNode): MessageTreeNode => {
-        return replaceManyNodes(currentTree, payload);
-      });
+      runtimeStoreRef.current.ingest(payload);
       setLastRefreshIso(new Date().toISOString());
       setError(null);
     } catch (unknownError: unknown) {

@@ -143,7 +143,7 @@ function buildControlItem(
   const topicType = decideTopicType(configuredTopicType, topic, value);
   const valueType = decideValueType(configuredValueType, value);
   const isSwitch = isSwitchType(topicType, value, valueType);
-  const isSwitchOn = isSwitchOnValue(topicType, value, valueType, enumeration);
+  const isSwitchOn = deriveSwitchOnState(topicType, value, valueType, enumeration);
   const iconName = getConfiguredIconName(topic, settingsStore);
 
   const displayNameOptions: {
@@ -309,7 +309,7 @@ function isSwitchType(topicType: string, value: MessageScalar, valueType: string
  * @param enumList Enumeration list for parameter mode.
  * @returns {boolean} True when interpreted as switched on.
  */
-function isSwitchOnValue(topicType: string, value: MessageScalar, valueType: string, enumList: string[]): boolean {
+export function deriveSwitchOnState(topicType: string, value: MessageScalar, valueType: string, enumList: string[]): boolean {
   const valueLower = String(value ?? '').toLowerCase();
 
   if (valueLower.length === 0) {
