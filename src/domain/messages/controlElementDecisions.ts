@@ -22,11 +22,8 @@ const TYPE_IDENTIFIER: Record<string, string> = {
   window: 'Window',
   temperature: 'Temperature',
   humidity: 'Humidity',
+  'roller shutter': 'Roller',
   pressure: 'Air Pressure',
-  roller: 'Roller',
-  light: 'Light',
-  switch: 'Switch',
-  camera: 'Camera',
 };
 
 const UNIT_IDENTIFIER: Record<string, string> = {
@@ -268,7 +265,7 @@ function decideTopicType(configuredTopicType: string, topic: string, value: Mess
     }
   }
 
-  if (isSwitchLikeValue(value)) {
+  if (isAutomaticSwitchValue(value)) {
     return 'Switch';
   }
   return 'Information';
@@ -296,11 +293,12 @@ function decideValueType(configuredValueType: string, value: MessageScalar): str
  * @returns {boolean} True when switch UI is appropriate.
  */
 function isSwitchType(topicType: string, value: MessageScalar, valueType: string): boolean {
+  void value;
   if (valueType.toLowerCase() === 'enumeration') {
     return true;
   }
 
-  return SWITCH_TOPIC_TYPES.has(topicType) || isSwitchLikeValue(value);
+  return SWITCH_TOPIC_TYPES.has(topicType);
 }
 
 /**
@@ -319,7 +317,7 @@ function isSwitchOnValue(topicType: string, value: MessageScalar, valueType: str
   }
 
   if (topicType === 'Roller') {
-    return valueLower !== 'down' && valueLower !== '0' && valueLower !== 'closed';
+    return valueLower !== 'down' && valueLower !== '0';
   }
 
   if (topicType === 'Parameter') {
@@ -330,17 +328,17 @@ function isSwitchOnValue(topicType: string, value: MessageScalar, valueType: str
     return !isOffState;
   }
 
-  return !['off', '0', 'false', 'down', 'closed'].includes(valueLower);
+  return !['off', '0', 'false'].includes(valueLower);
 }
 
 /**
- * Detects whether a value can be interpreted as a switch state.
+ * Detects whether automatic topic typing should infer a switch.
  * @param value Current topic value.
- * @returns {boolean} True when value is switch-like.
+ * @returns {boolean} True when value matches legacy on/off semantics.
  */
-function isSwitchLikeValue(value: MessageScalar): boolean {
+function isAutomaticSwitchValue(value: MessageScalar): boolean {
   const valueLower = String(value ?? '').toLowerCase();
-  return ['on', 'off', 'up', 'down', 'open', 'closed', '0', '1', 'true', 'false'].includes(valueLower);
+  return valueLower === 'on' || valueLower === 'off';
 }
 
 /**

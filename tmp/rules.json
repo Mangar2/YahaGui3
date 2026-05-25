@@ -1,0 +1,1048 @@
+{
+    "alert": {
+        "rules": {
+            "awake": {
+                "check": "status/presence = awake and status/alert/motion != ok",
+                "isValid": true,
+                "name": "alert/awake",
+                "topic": {
+                    "status/alert/motion": "ok"
+                }
+            },
+            "motion": {
+                "anyOf": [
+                    "ground/+/+/motion sensor/detection state",
+                    "cellar/+/+/motion sensor/detection state",
+                    "first/hallway/main/motion sensor/detection state",
+                    "first/study/main/motion sensor/detection state",
+                    "first/dressingroom/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = absent and status/cleaning/first != cleaning and status/cleaning/ground != cleaning",
+                "cooldownInSeconds": 1200,
+                "isValid": true,
+                "name": "alert/motion",
+                "topic": {
+                    "status/alert/motion": "alert"
+                }
+            },
+            "nomotion": {
+                "check": "status/alert/motion != ok",
+                "durationWithoutMovementInMinutes": 30,
+                "isValid": true,
+                "name": "alert/nomotion",
+                "topic": {
+                    "status/alert/motion": "ok"
+                }
+            }
+        }
+    },
+    "cellar": {
+        "alert": {
+            "rules": {
+                "window": {
+                    "check": "status/presence != awake",
+                    "isValid": true,
+                    "name": "cellar/alert/window",
+                    "topic": "status/alert/window",
+                    "value": "if(cellar/boilerroom/main/window/detection state != closed or cellar/storeroom/main/window/detection state != closed or cellar/hobbycellar/east/window/detection state != closed or cellar/hobbycellar/west/window/detection state != closed, alert, ok)"
+                }
+            }
+        },
+        "boilerroom": {
+            "rules": {
+                "water alert": {
+                    "isValid": true,
+                    "name": "cellar/boilerroom/water alert",
+                    "topic": {
+                        "status/alert/water": "if(cellar/boilerroom/main/water leakage/detection state = 1, alert, ok)"
+                    }
+                }
+            },
+            "washingmachine": {
+                "rules": {
+                    "SwitchOff": {
+                        "isValid": true,
+                        "name": "cellar/boilerroom/washingmachine/SwitchOff",
+                        "time": "23:00",
+                        "topic": {
+                            "cellar/boilerroom/zwave/switch/washing machine/set": "off"
+                        }
+                    },
+                    "SwitchOn": {
+                        "check": "solar/average feedin > 2000 or \"/time\" >= \"14:00\"",
+                        "duration": "8:00",
+                        "isValid": true,
+                        "name": "cellar/boilerroom/washingmachine/SwitchOn",
+                        "time": "8:00",
+                        "topic": {
+                            "cellar/boilerroom/zwave/switch/washing machine/set": "on"
+                        }
+                    }
+                }
+            }
+        },
+        "light": {
+            "rules": {
+                "SwitchOff": {
+                    "active": false,
+                    "check": "\"/time\" >= status/motion/cellar/latest + 5 and status/motion/ground/latest > status/motion/cellar/latest",
+                    "cooldownInSeconds": 300,
+                    "errors": [
+                        "Error in rule \"cellar/light/SwitchOff\": false is not a number or a date ([\"status/motion/cellar/latest\",\"5\"])"
+                    ],
+                    "isValid": false,
+                    "name": "cellar/light/SwitchOff",
+                    "topic": {
+                        "cellar/boilerroom/main/light/light on time/set": "off",
+                        "cellar/hallway/main/light/light on time/set": "off",
+                        "cellar/hobbycellar/east/light/light on time/set": "off",
+                        "cellar/hobbycellar/north/light/light on time/set": "off",
+                        "cellar/hobbycellar/west/light/light on time/set": "off",
+                        "cellar/storeroom/main/light/light on time/set": "off"
+                    }
+                }
+            }
+        },
+        "motion": {
+            "rules": {
+                "latest": {
+                    "anyOf": [
+                        "cellar/hobbycellar/west/motion sensor/detection state",
+                        "cellar/hobbycellar/east/motion sensor/detection state",
+                        "cellar/hobbycellar/north/motion sensor/detection state",
+                        "cellar/hobbycellar/motion/motion sensor/detection state",
+                        "cellar/boilerroom/main/motion sensor/detection state",
+                        "cellar/storeroom/main/motion sensor/detection state",
+                        "cellar/hallway/main/motion sensor/detection state"
+                    ],
+                    "cooldownInSeconds": 10,
+                    "isValid": true,
+                    "name": "cellar/motion/latest",
+                    "topic": "status/motion/cellar/latest",
+                    "value": "/time"
+                }
+            }
+        },
+        "roller": {
+            "rules": {
+                "DownEvening": {
+                    "check": "\"/time\" >= \"/sunset\" or \"/time\" >= \"23:00\"",
+                    "isValid": true,
+                    "name": "cellar/roller/DownEvening",
+                    "topic": [
+                        "cellar/hobbycellar/roller/roller shutter/roller shutter key/set",
+                        "cellar/boilerroom/switches/roller shutter/roller shutter key/set"
+                    ],
+                    "value": "100"
+                },
+                "UpMorning": {
+                    "check": "\"/time\" >= \"/sunrise\" - 10",
+                    "isValid": true,
+                    "name": "cellar/roller/UpMorning",
+                    "time": "6:00",
+                    "topic": [
+                        "cellar/hobbycellar/roller/roller shutter/roller shutter key/set",
+                        "cellar/boilerroom/switches/roller shutter/roller shutter key/set"
+                    ],
+                    "value": "0"
+                }
+            }
+        }
+    },
+    "first": {
+        "dressingroom": {
+            "rules": {
+                "awake": {
+                    "active": false,
+                    "check": "status/presence != initial",
+                    "isValid": true,
+                    "name": "first/dressingroom/awake",
+                    "topic": "first/dressingroom/zwave/switch/dressing room/set",
+                    "value": "map_1 = (default: off, awake: on)
+map_1(status/presence)"
+                },
+                "motion": {
+                    "isValid": false,
+                    "name": "first/dressingroom/motion",
+                    "topic": "first/dressingroom/zwave/switch/dressing room/set",
+                    "value": "if(\"/time\" < status/motion/first/latest + 20 and status/presence = awake, on, off)"
+                }
+            }
+        },
+        "info": {
+            "rules": {
+                "open window": {
+                    "check": "outdoor/garden/temperature < first/hallway/main/temperature and humidity sensor/temperature in celsius and first/hallway/main/temperature and humidity sensor/temperature in celsius > 24",
+                    "cooldownInSeconds": 43200,
+                    "isValid": true,
+                    "name": "first/info/open window",
+                    "time": "20:00",
+                    "topic": {
+                        "status/alert/openwindow": "info"
+                    }
+                }
+            }
+        },
+        "motion": {
+            "rules": {
+                "latest": {
+                    "anyOf": [
+                        "first/hallway/main/motion sensor/detection state",
+                        "first/bathroom/main/motion sensor/detection state",
+                        "first/study/main/motion sensor/detection state",
+                        "first/dressingroom/main/motion sensor/detection state"
+                    ],
+                    "cooldownInSeconds": 10,
+                    "isValid": true,
+                    "name": "first/motion/latest",
+                    "topic": "status/motion/first/latest",
+                    "value": "/time"
+                }
+            }
+        },
+        "study": {
+            "makros": {
+                "rules": {
+                    "pcmaster": {
+                        "allOf": [
+                            "first/study/zwave/switch/pcmaster/set"
+                        ],
+                        "isValid": true,
+                        "name": "first/study/makros/pcmaster",
+                        "topic": [
+                            "first/study/zwave/switch/master/set",
+                            "first/study/makro/switch/pcvolker/set",
+                            "first/study/zwave/switch/pcmaster"
+                        ],
+                        "value": "map_1 = (1: on, on: on, default: off)
+map_1(first/study/zwave/switch/pcmaster/set)"
+                    },
+                    "pcvolker": {
+                        "allOf": [
+                            "first/study/makro/switch/pcvolker/set"
+                        ],
+                        "isValid": true,
+                        "name": "first/study/makros/pcvolker",
+                        "topic": [
+                            "first/study/zwave/switch/pcvolker/set"
+                        ],
+                        "value": "map_1 = (1: on, on: on, default: off)
+map_1(first/study/makro/switch/pcvolker/set)"
+                    },
+                    "printer": {
+                        "allOf": [
+                            "first/study/makro/switch/laserprinter/set"
+                        ],
+                        "isValid": true,
+                        "name": "first/study/makros/printer",
+                        "topic": [
+                            "first/study/zwave/switch/master/set",
+                            "first/study/zwave/switch/laserprinter/set"
+                        ],
+                        "value": "map_1 = (1: on, on: on, default: off)
+map_1(first/study/makro/switch/laserprinter/set)"
+                    }
+                }
+            },
+            "standby": {
+                "rules": {
+                    "master": {
+                        "check": "first/study/zwave/sys/master/Power < 35",
+                        "delayInSeconds": 120,
+                        "isValid": true,
+                        "name": "first/study/standby/master",
+                        "topic": {
+                            "first/study/zwave/switch/master/set": "off",
+                            "first/study/zwave/switch/pcvolker/set": "off"
+                        }
+                    },
+                    "pc regina": {
+                        "check": "first/study/zwave/sys/pcregina/Power < 2",
+                        "delayInSeconds": 10,
+                        "isValid": true,
+                        "name": "first/study/standby/pc regina",
+                        "topic": {
+                            "first/study/zwave/switch/pcregina/set": "off"
+                        }
+                    }
+                }
+            },
+            "vacuum cleaner": {
+                "rules": {
+                    "activate": {
+                        "isValid": true,
+                        "name": "first/study/vacuum cleaner/activate",
+                        "qos": 1,
+                        "topic": "first/study/zwave/switch/vacuum cleaner/set",
+                        "value": "if(\"/time\" >= \"4:00\" and \"/time\" <= \"22:00\", on, off)",
+                        "weekdays": [
+                            "Mon",
+                            "Sat"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "ground": {
+        "kitchen": {
+            "dishwasher": {
+                "rules": {
+                    "onMorning": {
+                        "isValid": true,
+                        "name": "ground/kitchen/dishwasher/onMorning",
+                        "time": "map_1 = (awake: \"6:00\")
+map_1(status/presence)",
+                        "topic": {
+                            "ground/kitchen/zwave/switch/dishwasher/set": "on"
+                        }
+                    }
+                }
+            }
+        },
+        "livingroom": {
+            "camera": {
+                "rules": {
+                    "activate": {
+                        "check": "status/presence != initial",
+                        "durationWithoutMovementInMinutes": 1,
+                        "isValid": true,
+                        "name": "ground/livingroom/camera/activate",
+                        "topic": "ground/livingroom/zwave/switch/camera/set",
+                        "value": "map_1 = (absent: on, default: off)
+map_1(status/presence)"
+                    }
+                }
+            },
+            "charge": {
+                "rules": {
+                    "off on standby": {
+                        "check": "ground/livingroom/zwave/sys/charge/Power < 10",
+                        "cooldownInSeconds": 600,
+                        "duration": "4:00",
+                        "isValid": true,
+                        "name": "ground/livingroom/charge/off on standby",
+                        "topic": {
+                            "ground/livingroom/zwave/switch/charge/set": "off"
+                        }
+                    },
+                    "solar": {
+                        "check": "solar/average feedin > 3000",
+                        "cooldownInSeconds": 600,
+                        "duration": "4:00",
+                        "isValid": true,
+                        "name": "ground/livingroom/charge/solar",
+                        "topic": {
+                            "ground/livingroom/zwave/switch/charge/set": "on"
+                        }
+                    }
+                }
+            },
+            "ficus": {
+                "rules": {
+                    "battery warning": {
+                        "check": "ground/livingroom/main/ficus/voltage <= 9",
+                        "cooldownInSeconds": 86400,
+                        "isValid": true,
+                        "name": "ground/livingroom/ficus/battery warning",
+                        "topic": {
+                            "status/alert/battery/ficus": "warning"
+                        }
+                    }
+                }
+            },
+            "floodlight": {
+                "rules": {
+                    "evening": {
+                        "allOf": [
+                            "ground/livingroom/motionv2/motion sensor/detection state"
+                        ],
+                        "check": "\"/time\" >= \"/sunset\" - 10 and status/presence = awake",
+                        "cooldownInSeconds": 7200,
+                        "isValid": true,
+                        "name": "ground/livingroom/floodlight/evening",
+                        "topic": {
+                            "ground/livingroom/zwave/switch/floodlight/set": "on"
+                        }
+                    },
+                    "morning": {
+                        "allOf": [
+                            "ground/livingroom/motionv2/motion sensor/detection state"
+                        ],
+                        "check": "\"/time\" <= \"/sunrise\" - 10 and status/presence = awake",
+                        "cooldownInSeconds": 7200,
+                        "isValid": true,
+                        "name": "ground/livingroom/floodlight/morning",
+                        "topic": {
+                            "ground/livingroom/zwave/switch/floodlight/set": "on"
+                        }
+                    }
+                }
+            },
+            "motion": {
+                "battery": {
+                    "rules": {
+                        "warning": {
+                            "check": "ground/livingroom/motionv2/battery/voltage < 3.2",
+                            "cooldownInSeconds": 86400,
+                            "isValid": true,
+                            "name": "ground/livingroom/motion/battery/warning",
+                            "topic": {
+                                "status/alert/battery/motion": "warning"
+                            }
+                        }
+                    }
+                }
+            },
+            "multimedia": {
+                "rules": {
+                    "presence": {
+                        "check": "status/presence != initial and ground/livingroom/zwave/sys/multimedia/Power < 20",
+                        "isValid": true,
+                        "name": "ground/livingroom/multimedia/presence",
+                        "topic": "ground/livingroom/zwave/switch/multimedia/set",
+                        "value": "map_1 = (default: off, awake: on)
+map_1(status/presence)"
+                    }
+                }
+            },
+            "roller": {
+                "rules": {
+                    "DownCoolingEast": {
+                        "active": false,
+                        "check": "outdoor/garden/weather2/sensor/temperature > 25 and ground/hallway/center/temperature and humidity sensor/temperature in celsius > 24.5",
+                        "duration": "6:00",
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/DownCoolingEast",
+                        "time": "9:30",
+                        "topic": {
+                            "ground/livingroom/zwave/shutter/southeast/set": "off"
+                        }
+                    },
+                    "DownCoolingWest": {
+                        "active": false,
+                        "check": "outdoor/garden/weather2/sensor/temperature > 22 and ground/hallway/center/temperature and humidity sensor/temperature in celsius > 23 and status/motion/ground/latest < \"/time\" - 30 and (status/presence != awake or status/motion/first/latest > \"/time\" - 30)",
+                        "duration": "6:00",
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/DownCoolingWest",
+                        "time": "9:30",
+                        "topic": {
+                            "ground/livingroom/state/shutter/cooling": 1,
+                            "ground/livingroom/zwave/shutter/southwest/set": "off"
+                        }
+                    },
+                    "DownEvening": {
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/DownEvening",
+                        "time": "23:30",
+                        "topic": {
+                            "ground/livingroom/zwave/shutter/southeast/set": "off",
+                            "ground/livingroom/zwave/shutter/southwest/set": "off"
+                        }
+                    },
+                    "DownSunsetEast": {
+                        "check": "\"/time\" >= \"/sunset\" - 10",
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/DownSunsetEast",
+                        "topic": {
+                            "ground/livingroom/zwave/shutter/southeast/set": "off"
+                        }
+                    },
+                    "DownSunsetWestAwake": {
+                        "anyOf": [
+                            "first/hallway/main/motion sensor/detection state",
+                            "cellar/hobbycellar/west/motion sensor/detection state",
+                            "cellar/hobbycellar/east/motion sensor/detection state",
+                            "cellar/hobbycellar/motion/motion sensor/detection state",
+                            "cellar/boilerroom/main/motion sensor/detection state",
+                            "ground/livingroom/motionv2/motion sensor/detection state"
+                        ],
+                        "check": "\"/time\" >= \"/sunset\"",
+                        "cooldownInSeconds": 36000,
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/DownSunsetWestAwake",
+                        "topic": {
+                            "ground/livingroom/zwave/shutter/southwest/set": "off"
+                        }
+                    },
+                    "DownSunsetWestNotAwake": {
+                        "check": "\"/time\" >= \"/sunset\" and status/presence != awake",
+                        "cooldownInSeconds": 36000,
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/DownSunsetWestNotAwake",
+                        "topic": {
+                            "ground/livingroom/zwave/shutter/southwest/set": "off"
+                        }
+                    },
+                    "UpAfternoon": {
+                        "check": "\"/time\" <= \"/sunset\" - 30 and status/presence != initial",
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/UpAfternoon",
+                        "time": "17:00",
+                        "topic": {
+                            "ground/livingroom/state/shutter/cooling": 0,
+                            "ground/livingroom/zwave/shutter/southeast/set": "on",
+                            "ground/livingroom/zwave/shutter/southwest/set": "on"
+                        }
+                    },
+                    "UpMorning": {
+                        "check": "map_1 = (absent: \"8:00\", awake: \"5:30\", sleeping: \"10:00\")
+\"/time\" >= \"/sunrise\" - 10 and \"/time\" < \"/sunset\" - 10 and \"/time\" >= map_1(status/presence) and status/presence != initial",
+                        "duration": "6:00",
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/UpMorning",
+                        "time": "5:00",
+                        "topic": {
+                            "ground/livingroom/zwave/shutter/southeast/set": "on",
+                            "ground/livingroom/zwave/shutter/southwest/set": "on"
+                        }
+                    },
+                    "UpPresenceWest": {
+                        "anyOf": [
+                            "ground/livingroom/motionv2/motion sensor/detection state"
+                        ],
+                        "check": "ground/livingroom/state/shutter/cooling = 1",
+                        "duration": "7:00",
+                        "isValid": true,
+                        "name": "ground/livingroom/roller/UpPresenceWest",
+                        "time": "10:00",
+                        "topic": {
+                            "ground/livingroom/state/shutter/cooling": 0,
+                            "ground/livingroom/zwave/shutter/southwest/set": "on"
+                        }
+                    }
+                }
+            },
+            "vacuum cleaner": {
+                "rules": {
+                    "activate": {
+                        "isValid": true,
+                        "name": "ground/livingroom/vacuum cleaner/activate",
+                        "qos": 1,
+                        "topic": "ground/livingroom/zwave/switch/vacuum cleaner/set",
+                        "value": "if(\"/time\" >= \"4:00\" and \"/time\" <= \"22:00\", on, off)",
+                        "weekdays": [
+                            "Mon",
+                            "Sat"
+                        ]
+                    }
+                }
+            }
+        },
+        "motion": {
+            "rules": {
+                "latest": {
+                    "anyOf": [
+                        "ground/hallway/wall/motion sensor/detection state",
+                        "ground/hallway/center/motion sensor/detection state",
+                        "ground/livingroom/motionv2/motion sensor/detection state"
+                    ],
+                    "cooldownInSeconds": 10,
+                    "isValid": true,
+                    "name": "ground/motion/latest",
+                    "topic": "status/motion/ground/latest",
+                    "value": "/time"
+                }
+            }
+        },
+        "wardrobe": {
+            "central": {
+                "rules": {
+                    "charge": {
+                        "anyOf": [
+                            "ground/wardrobe/main/motion sensor/detection state"
+                        ],
+                        "cooldownInSeconds": 60,
+                        "isValid": true,
+                        "name": "ground/wardrobe/central/charge",
+                        "topic": {
+                            "ground/wardrobe/i2c/switch/charge/set": "on"
+                        }
+                    },
+                    "lanSwitch": {
+                        "check": "status/presence != initial",
+                        "isValid": true,
+                        "name": "ground/wardrobe/central/lanSwitch",
+                        "topic": "ground/wardrobe/i2c/switch/network switch/set",
+                        "value": "map_1 = (awake: on, default: off)
+map_1(status/presence)"
+                    },
+                    "offNetworkMoring": {
+                        "check": "status/presence != initial",
+                        "isValid": true,
+                        "name": "ground/wardrobe/central/offNetworkMoring",
+                        "time": "8:00",
+                        "topic": {
+                            "ground/wardrobe/i2c/switch/monitor/set": "off"
+                        }
+                    }
+                }
+            },
+            "floorHeating": {
+                "rules": {
+                    "offEvening": {
+                        "check": "first/hallway/main/temperature and humidity sensor/temperature in celsius > ground/wardrobe/floorHeating/lowtemperature",
+                        "isValid": true,
+                        "name": "ground/wardrobe/floorHeating/offEvening",
+                        "time": "22:00",
+                        "topic": {
+                            "ground/wardrobe/fs20/switch/floor heating/set": "off"
+                        }
+                    },
+                    "onMorning": {
+                        "check": "outdoor/garden/main/weather/temperature < 18 and first/hallway/main/temperature and humidity sensor/temperature in celsius < ground/wardrobe/floorHeating/lowtemperature",
+                        "isValid": true,
+                        "name": "ground/wardrobe/floorHeating/onMorning",
+                        "time": "map_1 = (absent: \"13:00\", default: \"6:00\")
+map_1(status/presence)",
+                        "topic": {
+                            "ground/wardrobe/fs20/switch/floor heating/set": "on"
+                        }
+                    }
+                }
+            },
+            "ventilation": {
+                "rules": {
+                    "OffEvening": {
+                        "check": "map_1 = (absent: 3, awake: 0, sleeping: 0)
+map_2 = (absent: 22, awake: 24, sleeping: 24)
+outdoor/garden/main/weather/temperature < map_1(status/presence) or outdoor/garden/main/weather/temperature > map_2(status/presence) or ground/hallway/center/temperature and humidity sensor/humidity in percent < ground/wardrobe/ventilation/min humidity",
+                        "duration": "1:00",
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OffEvening",
+                        "time": "map_1 = (absent: \"19:00\", default: \"20:00\")
+map_1(status/presence)",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "off"
+                        }
+                    },
+                    "OffMorning": {
+                        "check": "map_1 = (absent: 3, awake: 0, sleeping: 0)
+map_2 = (absent: 22, awake: 24, sleeping: 24)
+outdoor/garden/main/weather/temperature < map_1(status/presence) or outdoor/garden/main/weather/temperature > map_2(status/presence) or ground/hallway/center/temperature and humidity sensor/humidity in percent < ground/wardrobe/ventilation/min humidity",
+                        "duration": "1:00",
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OffMorning",
+                        "time": "map_1 = (absent: \"9:00\", default: \"10:00\")
+map_1(status/presence)",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "off"
+                        }
+                    },
+                    "OnCooling": {
+                        "check": "map_1 = (absent: 25, awake: 24, sleeping: 24)
+outdoor/garden/main/weather/temperature < 16 and ground/hallway/center/temperature and humidity sensor/temperature in celsius > map_1(status/presence)",
+                        "cooldownInSeconds": 36000,
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OnCooling",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "on"
+                        }
+                    },
+                    "OnEvening": {
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OnEvening",
+                        "time": "18:00",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "on"
+                        }
+                    },
+                    "OnMorning": {
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OnMorning",
+                        "time": "7:00",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "on"
+                        }
+                    },
+                    "OnNight": {
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OnNight",
+                        "time": "ground/wardrobe/ventilation/on sleeping",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "on"
+                        }
+                    },
+                    "OnWorking": {
+                        "allOf": [
+                            "first/study/main/motion sensor/detection state"
+                        ],
+                        "check": "status/presence = awake",
+                        "cooldownInSeconds": 14800,
+                        "duration": "4:00",
+                        "isValid": true,
+                        "name": "ground/wardrobe/ventilation/OnWorking",
+                        "time": "11:00",
+                        "topic": {
+                            "ground/wardrobe/zwave/switch/ventilation/set": "on"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "motion": {
+        "rules": {
+            "cleaningFirst": {
+                "allOf": [
+                    "first/study/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = absent and status/cleaning/first != cleaning",
+                "duration": "01:00",
+                "errors": {
+                    "weekDays": "unknown property, misspelled?"
+                },
+                "isValid": false,
+                "name": "motion/cleaningFirst",
+                "time": "11:00",
+                "topic": {
+                    "status/cleaning/first": "cleaning"
+                },
+                "weekDays": [
+                    "Sun"
+                ]
+            },
+            "cleaningFirstFinished": {
+                "allOf": [
+                    "first/study/main/motion sensor/detection state"
+                ],
+                "check": "status/cleaning/first = cleaning",
+                "durationWithoutMovementInMinutes": 15,
+                "isValid": true,
+                "name": "motion/cleaningFirstFinished",
+                "topic": "status/cleaning/first",
+                "value": "off"
+            },
+            "cleaningGround": {
+                "allOf": [
+                    "ground/hallway/center/motion sensor/detection state"
+                ],
+                "check": "status/presence = absent and status/cleaning/ground != cleaning",
+                "duration": "00:30",
+                "errors": {
+                    "weekDays": "unknown property, misspelled?"
+                },
+                "isValid": false,
+                "name": "motion/cleaningGround",
+                "time": "11:00",
+                "topic": {
+                    "status/cleaning/ground": "cleaning"
+                },
+                "weekDays": [
+                    "Sun"
+                ]
+            },
+            "cleaningGroundFinished": {
+                "allOf": [
+                    "ground/hallway/center/motion sensor/detection state"
+                ],
+                "check": "status/cleaning/ground = cleaning",
+                "durationWithoutMovementInMinutes": 15,
+                "isValid": true,
+                "name": "motion/cleaningGroundFinished",
+                "topic": {
+                    "status/cleaning/ground": "off"
+                }
+            },
+            "homecoming": {
+                "allOf": [
+                    "ground/hallway/wall/motion sensor/detection state",
+                    "ground/hallway/center/motion sensor/detection state"
+                ],
+                "allow": [
+                    "ground/wardrobe/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = absent",
+                "isValid": true,
+                "name": "motion/homecoming",
+                "topic": [
+                    "status/presence",
+                    "system/presence"
+                ],
+                "value": "awake"
+            },
+            "initialize": {
+                "anyOf": [
+                    "+/+/+/motion sensor/detection state"
+                ],
+                "check": "status/presence = initial",
+                "isValid": true,
+                "name": "motion/initialize",
+                "topic": {
+                    "status/alert/motion": 0,
+                    "status/cleaning/first": 0,
+                    "status/cleaning/ground": 0,
+                    "status/presence": "awake",
+                    "system/presence": "awake"
+                }
+            },
+            "leaving": {
+                "allOf": [
+                    "ground/hallway/wall/motion sensor/detection state"
+                ],
+                "allow": [
+                    "ground/wardrobe/main/motion sensor/detection state",
+                    "ground/hallway/center/motion sensor/detection state",
+                    "first/hallway/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = awake",
+                "durationWithoutMovementInMinutes": 30,
+                "isValid": true,
+                "name": "motion/leaving",
+                "topic": [
+                    "status/presence",
+                    "system/presence"
+                ],
+                "value": "absent"
+            },
+            "leaving2": {
+                "allOf": [
+                    "ground/hallway/wall/motion sensor/detection state"
+                ],
+                "allow": [
+                    "ground/wardrobe/main/motion sensor/detection state",
+                    "ground/hallway/center/motion sensor/detection state",
+                    "first/hallway/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = awake",
+                "duration": "2:00",
+                "durationWithoutMovementInMinutes": 20,
+                "isValid": true,
+                "name": "motion/leaving2",
+                "time": "12:00",
+                "topic": [
+                    "status/presence",
+                    "system/presence"
+                ],
+                "value": "absent"
+            },
+            "setReceived": {
+                "anyOf": [
+                    "status/presence/set",
+                    "system/presence/set"
+                ],
+                "check": "map_1 = (1: awake, on: awake, awake: awake, sleeping: sleeping, default: absent)
+status/presence != map_1(status/presence/set)",
+                "isValid": true,
+                "name": "motion/setReceived",
+                "topic": {
+                    "ground/livingroom/zwave/switch/camera/set": "map_1 = (absent: on, default: off)
+map_1(status/presence/set)",
+                    "outdoor/garden/main/switch/light stairs/blink": "map_1 = (1: 2, on: 2, awake: 2, sleeping: 0, default: 1)
+map_1(status/presence/set)",
+                    "status/presence": "map_1 = (1: awake, on: awake, awake: awake, sleeping: sleeping, default: absent)
+map_1(status/presence/set)"
+                }
+            },
+            "sleeping": {
+                "allOf": [
+                    "first/hallway/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = awake",
+                "duration": "8:00",
+                "durationWithoutMovementInMinutes": 15,
+                "isValid": true,
+                "name": "motion/sleeping",
+                "noneOf": [
+                    "ground/hallway/wall/motion sensor/detection state",
+                    "ground/hallway/center/motion sensor/detection state",
+                    "cellar/hobbycellar/west/motion sensor/detection state",
+                    "cellar/hobbycellar/east/motion sensor/detection state",
+                    "cellar/hobbycellar/north/motion sensor/detection state",
+                    "cellar/hobbycellar/motion/motion sensor/detection state",
+                    "cellar/boilerroom/main/motion sensor/detection state",
+                    "cellar/storeroom/main/motion sensor/detection state",
+                    "cellar/hallway/main/motion sensor/detection state",
+                    "ground/livingroom/motionv2/motion sensor/detection state"
+                ],
+                "time": "21:00",
+                "topic": [
+                    "status/presence",
+                    "system/presence"
+                ],
+                "value": "sleeping"
+            },
+            "wakeup1": {
+                "anyOf": [
+                    "+/+/+/motion sensor/detection state"
+                ],
+                "check": "status/presence = sleeping",
+                "isValid": true,
+                "name": "motion/wakeup1",
+                "noneOf": [
+                    "first/hallway/main/motion sensor/detection state",
+                    "first/bathroom/main/motion sensor/detection state"
+                ],
+                "topic": [
+                    "status/presence",
+                    "system/presence"
+                ],
+                "value": "awake"
+            },
+            "wakeup2": {
+                "allOf": [
+                    "first/hallway/main/motion sensor/detection state"
+                ],
+                "check": "status/presence = absent and status/cleaning/first != cleaning",
+                "isValid": true,
+                "name": "motion/wakeup2",
+                "noneOf": [
+                    "ground/hallway/wall/motion sensor/detection state",
+                    "ground/hallway/center/motion sensor/detection state",
+                    "cellar/hobbycellar/west/motion sensor/detection state",
+                    "cellar/hobbycellar/east/motion sensor/detection state",
+                    "cellar/hobbycellar/north/motion sensor/detection state",
+                    "cellar/hobbycellar/motion/motion sensor/detection state",
+                    "cellar/boilerroom/main/motion sensor/detection state",
+                    "cellar/storeroom/main/motion sensor/detection state",
+                    "cellar/hallway/main/motion sensor/detection state",
+                    "ground/livingroom/motionv2/motion sensor/detection state"
+                ],
+                "topic": [
+                    "status/presence",
+                    "system/presence"
+                ],
+                "value": "awake"
+            }
+        }
+    },
+    "outdoor": {
+        "garden": {
+            "devices": {
+                "rules": {
+                    "switchOff": {
+                        "isValid": true,
+                        "name": "outdoor/garden/devices/switchOff",
+                        "time": "01:00",
+                        "topic": {
+                            "outdoor/garden/fs20/switch/brook/set": "off",
+                            "outdoor/garden/main/switch/pump/set": "off"
+                        }
+                    }
+                }
+            },
+            "light": {
+                "rules": {
+                    "evening": {
+                        "isValid": true,
+                        "name": "outdoor/garden/light/evening",
+                        "topic": [
+                            "outdoor/garden/fs20/switch/light stonefield/set",
+                            "outdoor/garden/fs20/switch/light pathway/set"
+                        ],
+                        "value": "if(outdoor/garden/temperature >= 19 and \"/time\" >= \"/sunset\" + 20 and \"/time\" < \"22:00\", on, off)"
+                    }
+                }
+            },
+            "light stairs": {
+                "rules": {
+                    "evening": {
+                        "isValid": true,
+                        "name": "outdoor/garden/light stairs/evening",
+                        "topic": "outdoor/garden/main/switch/light stairs/set",
+                        "value": "if(\"/time\" > \"/sunset\" + outdoor/garden/light stairs/sunset delay and \"/time\" < outdoor/garden/light stairs/off evening, on, off)"
+                    },
+                    "morning": {
+                        "isValid": true,
+                        "name": "outdoor/garden/light stairs/morning",
+                        "topic": "outdoor/garden/main/switch/light stairs/set",
+                        "value": "if(\"/time\" < \"/sunrise\" + -15 and \"/time\" > \"7:00\" and \"/time\" < \"8:00\", on, off)"
+                    }
+                }
+            },
+            "makros": {
+                "rules": {
+                    "temperature": {
+                        "isValid": true,
+                        "name": "outdoor/garden/makros/temperature",
+                        "topic": [
+                            "outdoor/garden/temperature"
+                        ],
+                        "value": "if(outdoor/garden/main/weather/temperature < outdoor/garden/weather2/sensor/temperature, outdoor/garden/main/weather/temperature, outdoor/garden/weather2/sensor/temperature)"
+                    }
+                }
+            },
+            "pump": {
+                "rules": {
+                    "pumpOff": {
+                        "check": "outdoor/garden/main/switch/pump != off",
+                        "delayInSeconds": 3600,
+                        "isValid": true,
+                        "name": "outdoor/garden/pump/pumpOff",
+                        "topic": {
+                            "outdoor/garden/main/switch/pump/set": "off"
+                        }
+                    },
+                    "watering": {
+                        "active": false,
+                        "isValid": true,
+                        "name": "outdoor/garden/pump/watering",
+                        "time": "04:00",
+                        "topic": {
+                            "outdoor/garden/main/switch/pump/set": "on"
+                        },
+                        "weekdays": [
+                            "Mon",
+                            "Wed",
+                            "Fri",
+                            "Sun"
+                        ]
+                    }
+                }
+            },
+            "rules": {
+                "socket parkingplace": {
+                    "isValid": true,
+                    "name": "outdoor/garden/socket parkingplace",
+                    "topic": "outdoor/garden/main/switch/socket parkingplace/set",
+                    "value": "if(\"/time\" >= \"9:00\" and \"/time\" >= \"/sunrise\" + 150 and \"/time\" <= \"18:00\" and \"/time\" <= \"/sunset\" - 100, on, off)"
+                }
+            },
+            "socket stonefield": {
+                "rules": {
+                    "activate": {
+                        "isValid": true,
+                        "name": "outdoor/garden/socket stonefield/activate",
+                        "topic": "outdoor/garden/main/switch/socket stonefield/set",
+                        "value": "if(outdoor/garden/temperature >= 18 and \"/time\" >= \"/sunset\" + 10 and \"/time\" < \"22:00\", on, off)"
+                    }
+                }
+            },
+            "tomatov2": {
+                "rules": {
+                    "battery warning": {
+                        "check": "outdoor/garden/tomatov2/battery/voltage < 4.76",
+                        "cooldownInSeconds": 86400,
+                        "isValid": true,
+                        "name": "outdoor/garden/tomatov2/battery warning",
+                        "topic": {
+                            "status/alert/battery/tomato": "warning"
+                        }
+                    }
+                }
+            },
+            "weather2": {
+                "rules": {
+                    "battery warning": {
+                        "check": "outdoor/garden/weather2/battery/voltage < 3.55",
+                        "cooldownInSeconds": 86400,
+                        "isValid": true,
+                        "name": "outdoor/garden/weather2/battery warning",
+                        "topic": {
+                            "status/alert/battery/weather2": "warning"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "rules": {
+        "outdoor/garden/light stairs/morning": {
+            "isValid": true,
+            "name": "outdoor/garden/light stairs/morning",
+            "qos": 1,
+            "topic": "outdoor/garden/main/switch/light stairs/set",
+            "value": "if(\"/time\" < \"/sunrise\" + -15 and \"/time\" > \"6:00\" and \"/time\" < \"8:00\", on, off)"
+        }
+    }
+}

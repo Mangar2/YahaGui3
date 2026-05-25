@@ -204,8 +204,16 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
       return;
     }
 
-    setEditorState(mapRuleToEditorState(selectedRule));
-  }, [rulesStore, selectedPath]);
+    const nextEditorState = mapRuleToEditorState(selectedRule);
+    const ruleName = typeof selectedRule.name === 'string' ? selectedRule.name : selectedPath.toTopic();
+    const recoveredFields = loadResult?.recoveredRuleFieldHints?.[ruleName];
+    if (Array.isArray(recoveredFields) && recoveredFields.length > 0) {
+      const loadHint = `Load-Hinweis: Control-Character-Recovery fuer Felder ${recoveredFields.join(', ')}.`;
+      nextEditorState.errors = nextEditorState.errors.length > 0 ? `${nextEditorState.errors}\n${loadHint}` : loadHint;
+    }
+
+    setEditorState(nextEditorState);
+  }, [rulesStore, selectedPath, loadResult]);
 
   /**
    * Updates one field in the rule detail editor state.
@@ -459,6 +467,22 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
   async function reloadRulesFromBackend(): Promise<void> {
     setIsLoading(true);
     const result = await rulesClientRef.current.loadRules();
+    if (!result.success && rulesStore !== null) {
+      setLoadResult((currentResult: RulesLoadResult | null): RulesLoadResult | null => {
+        if (currentResult === null || !currentResult.success) {
+          return result;
+        }
+
+        return {
+          ...currentResult,
+          error: null,
+          warning: result.error ?? 'Rules konnten nicht neu geladen werden. Vorheriger Stand bleibt aktiv.',
+        };
+      });
+      setIsLoading(false);
+      return;
+    }
+
     setLoadResult(result);
 
     if (result.success && result.rulesTree !== null) {

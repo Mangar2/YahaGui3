@@ -30,14 +30,20 @@ export class RulesConfigClient {
   async loadRules(): Promise<RulesLoadResult> {
     try {
       const url = `${this.baseUrl}/${this.configPath}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          Accept: 'application/json, text/plain, */*',
+        },
+      });
 
       if (!response.ok) {
         const status = String(response.status);
         throw new Error(`HTTP ${status}: Failed to load rules from ${url}`);
       }
 
-      const data: unknown = await response.json();
+      const responseBodyText = await response.text();
+      const parseResult = parseRulesPayload(responseBodyText);
+      const data: unknown = parseResult.data;
       const rulesTree = this.parseRulesTree(data);
       const ruleCount = this.countRules(rulesTree);
 
@@ -45,6 +51,8 @@ export class RulesConfigClient {
         success: true,
         rulesTree,
         error: null,
+        warning: parseResult.warning,
+        ...(parseResult.recoveredRuleFieldHints ? { recoveredRuleFieldHints: parseResult.recoveredRuleFieldHints } : {}),
         ruleCount,
       };
     } catch (error) {
@@ -53,6 +61,7 @@ export class RulesConfigClient {
         success: false,
         rulesTree: null,
         error: errorMessage,
+        warning: null,
         ruleCount: 0,
       };
     }
@@ -72,6 +81,7 @@ export class RulesConfigClient {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
+          Accept: 'application/json, text/plain, */*',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(externalFormat),
@@ -249,4 +259,243 @@ function isRule(value: unknown): value is Rule {
   const ruleObj = value;
   // Per SPEC: mandatory field is "topic"
   return 'topic' in ruleObj;
+}
+
+interface RulesPayloadParseResult {
+  data: unknown;
+  warning: string | null;
+  recoveredRuleFieldHints?: Record<string, string[]>;
+}
+
+/**
+ * Parses the rules payload with a targeted recovery for invalid control characters.
+ * Uses only standard JSON.parse and a pre-sanitize step for malformed string literals.
+ * @param rawPayload Raw HTTP response body.
+ * @returns {RulesPayloadParseResult} Parsed payload and optional warning.
+ */
+function parseRulesPayload(rawPayload: string): RulesPayloadParseResult {
+  try {
+    return {
+      data: JSON.parse(rawPayload) as unknown,
+      warning: null,
+    };
+  } catch (strictError: unknown) {
+    const strictErrorMessage = extractUnknownErrorMessage(strictError);
+    if (!isControlCharacterParseError(strictErrorMessage)) {
+      throw strictError;
+    }
+
+    const sanitizedPayload = escapeControlCharactersInsideJsonStrings(rawPayload);
+    try {
+      const parsedRecoveredPayload = JSON.parse(sanitizedPayload) as unknown;
+      const recoveredRuleFieldHints = collectRecoveredRuleFieldHints(parsedRecoveredPayload);
+      const affectedRuleNames = Object.keys(recoveredRuleFieldHints);
+      const previewNames = affectedRuleNames.slice(0, 8);
+      const truncatedSuffix = affectedRuleNames.length > previewNames.length ? ', ...' : '';
+
+      return {
+        data: parsedRecoveredPayload,
+        warning: affectedRuleNames.length > 0
+          ? `Rules-JSON enthielt unescaped Control-Characters in Strings. Betroffene Regeln: ${previewNames.join(', ')}${truncatedSuffix}. Oeffne die Regel und pruefe das Feld \"errors\".`
+          : 'Rules-JSON enthielt unescaped Control-Characters in Strings und wurde beim Laden automatisch normalisiert. Bitte betroffene Regeltexte pruefen und erneut speichern.',
+        recoveredRuleFieldHints,
+      };
+    } catch {
+      throw strictError;
+    }
+  }
+}
+
+/**
+ * Checks whether a parse error matches invalid control-character JSON payloads.
+ * @param errorMessage Parser error message.
+ * @returns {boolean} True when message indicates control-character JSON issues.
+ */
+function isControlCharacterParseError(errorMessage: string): boolean {
+  const normalizedMessage = errorMessage.toLowerCase();
+  return normalizedMessage.includes('bad control character') || normalizedMessage.includes('unexpected token');
+}
+
+/**
+ * Escapes raw control characters found inside JSON string literals.
+ * @param rawPayload Raw JSON text.
+ * @returns {string} Sanitized JSON text.
+ */
+function escapeControlCharactersInsideJsonStrings(rawPayload: string): string {
+  let result = '';
+  let inString = false;
+  let isEscaping = false;
+
+  for (let index = 0; index < rawPayload.length; index += 1) {
+    const currentCharacter = rawPayload.charAt(index);
+
+    if (!inString) {
+      if (currentCharacter === '"') {
+        inString = true;
+      }
+      result += currentCharacter;
+      continue;
+    }
+
+    if (isEscaping) {
+      isEscaping = false;
+      result += currentCharacter;
+      continue;
+    }
+
+    if (currentCharacter === '\\') {
+      isEscaping = true;
+      result += currentCharacter;
+      continue;
+    }
+
+    if (currentCharacter === '"') {
+      inString = false;
+      result += currentCharacter;
+      continue;
+    }
+
+    const codePoint = currentCharacter.charCodeAt(0);
+    if (codePoint <= 0x1f) {
+      result += toJsonControlCharacterEscape(currentCharacter, codePoint);
+      continue;
+    }
+
+    result += currentCharacter;
+  }
+
+  return result;
+}
+
+/**
+ * Converts one control character to a JSON-safe escaped representation.
+ * @param currentCharacter Current character.
+ * @param codePoint Character code.
+ * @returns {string} Escaped JSON representation.
+ */
+function toJsonControlCharacterEscape(currentCharacter: string, codePoint: number): string {
+  if (currentCharacter === '\n') {
+    return '\\n';
+  }
+  if (currentCharacter === '\r') {
+    return '\\r';
+  }
+  if (currentCharacter === '\t') {
+    return '\\t';
+  }
+  if (currentCharacter === '\b') {
+    return '\\b';
+  }
+  if (currentCharacter === '\f') {
+    return '\\f';
+  }
+  return `\\u${codePoint.toString(16).padStart(4, '0')}`;
+}
+
+/**
+ * Extracts a safe message from unknown error values.
+ * @param error Unknown error.
+ * @returns {string} Human-readable message.
+ */
+function extractUnknownErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as Record<string, unknown>).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+  return String(error);
+}
+
+/**
+ * Collects affected rule fields after control-character recovery.
+ * @param root Root rules payload.
+ * @returns {Record<string, string[]>} Map of rule name to affected fields.
+ */
+function collectRecoveredRuleFieldHints(root: unknown): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  collectRecoveredRuleFieldHintsRecursive(root, [], result);
+  return result;
+}
+
+/**
+ * Recursively scans nested rule containers and captures fields containing control characters.
+ * @param node Current subtree node.
+ * @param pathChunks Current nested path.
+ * @param result Result accumulator.
+ */
+function collectRecoveredRuleFieldHintsRecursive(
+  node: unknown,
+  pathChunks: string[],
+  result: Record<string, string[]>,
+): void {
+  if (!isPlainObject(node)) {
+    return;
+  }
+
+  for (const [entryKey, entryValue] of Object.entries(node)) {
+    if (entryKey === 'rules' && isPlainObject(entryValue)) {
+      for (const [ruleKey, ruleValue] of Object.entries(entryValue)) {
+        if (!isRule(ruleValue)) {
+          continue;
+        }
+
+        const affectedFields = collectRuleStringFieldNamesWithControlCharacters(ruleValue);
+        if (affectedFields.length === 0) {
+          continue;
+        }
+
+        const ruleName = typeof ruleValue.name === 'string' && ruleValue.name.trim().length > 0
+          ? ruleValue.name
+          : [...pathChunks, ruleKey].join('/');
+        result[ruleName] = affectedFields;
+      }
+      continue;
+    }
+
+    if (isPlainObject(entryValue)) {
+      collectRecoveredRuleFieldHintsRecursive(entryValue, [...pathChunks, entryKey], result);
+    }
+  }
+}
+
+/**
+ * Collects top-level rule field names that contain control characters.
+ * @param ruleValue Rule object.
+ * @returns {string[]} Field names.
+ */
+function collectRuleStringFieldNamesWithControlCharacters(ruleValue: Rule): string[] {
+  const result: string[] = [];
+
+  for (const [fieldName, fieldValue] of Object.entries(ruleValue)) {
+    if (valueContainsControlCharacter(fieldValue)) {
+      result.push(fieldName);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Checks whether a value contains any control character in nested string content.
+ * @param value Unknown value.
+ * @returns {boolean} True when control characters are found.
+ */
+function valueContainsControlCharacter(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return /[\u0000-\u001f]/.test(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((entry: unknown): boolean => valueContainsControlCharacter(entry));
+  }
+
+  if (!isPlainObject(value)) {
+    return false;
+  }
+
+  return Object.values(value).some((entry: unknown): boolean => valueContainsControlCharacter(entry));
 }

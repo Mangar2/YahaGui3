@@ -63,6 +63,7 @@ export function RulesPage(props: RulesPageProps): JSX.Element {
         <div className="rules-page-body overview-layout">
           <div className="app-panel rules-nav-panel">
             <div className="rules-status">
+              {loadResult.warning ? <p className="rules-warning-text">{loadResult.warning}</p> : null}
               <p>
                 Letzte Aktualisierung: <strong>{formatLocalizedTime(lastRefreshIso)}</strong>
               </p>

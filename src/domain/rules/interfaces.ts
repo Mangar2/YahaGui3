@@ -180,6 +180,10 @@ export interface RulesLoadResult {
   rulesTree: RuleTreeNode | null;
   /** Error message if loading failed */
   error: string | null;
+  /** Non-fatal warning shown while data is still usable */
+  warning: string | null;
+  /** Recovered rule names with affected field names. */
+  recoveredRuleFieldHints?: Record<string, string[]>;
   /** Count of rules loaded */
   ruleCount: number;
 }

@@ -19,6 +19,16 @@
   grid-template-columns: fit-content(var(--overview-nav-max-width)) minmax(var(--overview-panel-min-width), 1fr);
 }
 
+.rules-warning-text {
+  margin: 0 0 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.86rem;
+}
+
 .rules-nav {
   min-width: var(--overview-nav-min-width);
   width: 100%;
