@@ -96,5 +96,8 @@ function ControlIcon(props: { iconAsset: ControlIconAsset }): JSX.Element | null
     return null;
   }
 
-  return <img src={`/assets/${iconAsset}`} alt="" loading="lazy" decoding="async" />;
+  const iconBasePath = import.meta.env.BASE_URL;
+  const iconUrl = `${iconBasePath}assets/${iconAsset}`;
+
+  return <img src={iconUrl} alt="" loading="lazy" decoding="async" />;
 }
