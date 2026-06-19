@@ -109,10 +109,10 @@
   min-width: var(--overview-nav-min-width);
   width: 100%;
   max-width: 100%;
-  border: 1px solid var(--ui-border-soft);
-  border-radius: 12px;
-  background: var(--ui-panel-bg);
-  padding: 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .left-nav-list {
@@ -136,7 +136,7 @@
   border: 1px solid var(--ui-border);
   background: var(--ui-muted-bg);
   border-radius: 8px;
-  min-height: 2.5rem;
+  min-height: 3.75rem;
   padding: 0.45rem 0.75rem;
   font-size: 1rem;
   color: #495057;
@@ -206,7 +206,7 @@
   border: 1px solid var(--ui-border);
   background: var(--ui-muted-bg);
   border-radius: 8px;
-  min-height: 2.5rem;
+  min-height: 3.75rem;
   padding: 0.45rem 0.75rem;
   font-size: 1rem;
   color: #495057;
@@ -446,11 +446,16 @@
 @media (max-width: 44rem) {
   .overview-layout {
     grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 
   .left-nav {
     width: 100%;
     min-width: 100%;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 0.35rem 0;
   }
 
   .left-nav-list {
@@ -464,10 +469,15 @@
 
   .app-panel {
     min-width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .controls-grid {
     grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .control-card-topic,
@@ -476,7 +486,7 @@
   }
 }
 
-@media (max-width: 48rem) {
+@media (min-width: 44.01rem) and (max-width: 48rem) {
   .overview-layout {
     gap: 0.75rem;
   }

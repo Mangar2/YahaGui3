@@ -16,21 +16,30 @@ export function RulesNavigation(props: RulesNavigationProps): JSX.Element {
   const { items, onSelectItem } = props;
 
   return (
-    <aside className="rules-nav" aria-label="Rules Navigation">
-      <ul className="rules-nav-list">
+    <aside className="left-nav" aria-label="Rules Navigation">
+      <ul className="left-nav-list">
         {items.map((item: RulesNavigationItem): JSX.Element => {
           const type = resolveStyleType(item);
+          const buttonClassName = [
+            'left-nav-button',
+            type === 'active' ? 'left-nav-button-active' : '',
+            type === 'back' ? 'left-nav-button-back' : '',
+            type === 'new' ? 'left-nav-config-button' : '',
+          ]
+            .filter((value: string): boolean => value.length > 0)
+            .join(' ');
+
           return (
-            <li key={item.id} className={`rules-nav-item rules-nav-item-${type}`}>
+            <li key={item.id} className="left-nav-item">
               <button
                 type="button"
-                className={`rules-nav-button rules-nav-button-${type}`}
+                className={buttonClassName}
                 onClick={(): void => {
                   onSelectItem(item);
                 }}
                 aria-current={item.type === 'current' ? 'page' : undefined}
               >
-                <span className={`rules-nav-label rules-nav-label-${type}`}>{item.label}</span>
+                <span className="left-nav-label">{item.label}</span>
               </button>
             </li>
           );

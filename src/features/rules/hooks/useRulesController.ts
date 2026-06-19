@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getPublishBaseUrl, getPublishPath, getPublishTopicSetSuffix } from '../../../config/runtime';
+import {
+  getMessageStoreBaseUrl,
+  getMessageStorePath,
+  getPublishBaseUrl,
+  getPublishPath,
+  getPublishTopicSetSuffix,
+} from '../../../config/runtime';
 import { RulePath, type Rule, type RuleValue, type RulesLoadResult } from '../../../domain/rules/interfaces';
+import { MessageStoreClient } from '../../../infrastructure/messages/messageStoreClient';
 import { RuleTreeStore } from '../../../domain/rules/ruleTreeStore';
 import { RulesConfigClient } from '../../../infrastructure/rules/rulesConfigClient';
+import { formatTracePollingError, pollRuleTraceResponse, type RuleTracePollResponse } from './ruleTracePolling';
 
 export type RulesNavigationItemType = 'current' | 'back' | 'new' | 'normal';
 
@@ -48,6 +56,7 @@ interface UseRulesControllerState {
   navigationItems: RulesNavigationItem[];
   editorState: RuleEditorState | null;
   isSaving: boolean;
+  traceState: RuleTraceState;
   saveError: string | null;
   saveSuccessMessage: string | null;
   navigateToDepth: (depth: number) => void;
@@ -60,6 +69,24 @@ interface UseRulesControllerState {
   traceRuleDetails: () => Promise<void>;
 }
 
+export type RuleTraceStatus = 'idle' | 'pending' | 'success' | 'error';
+
+export interface RuleTraceState {
+  status: RuleTraceStatus;
+  requestedAtIso: string | null;
+  responseTopic: string | null;
+  response: RuleTracePollResponse | null;
+  error: string | null;
+}
+
+const IDLE_TRACE_STATE: RuleTraceState = {
+  status: 'idle',
+  requestedAtIso: null,
+  responseTopic: null,
+  response: null,
+  error: null,
+};
+
 /**
  * Loads and manages rules navigation state for the rules workspace.
  * @param baseUrl Base URL of the file-store API.
@@ -69,6 +96,11 @@ interface UseRulesControllerState {
  */
 export function useRulesController(baseUrl: string, configPath: string, isActive: boolean): UseRulesControllerState {
   const rulesClientRef = useRef<RulesConfigClient>(new RulesConfigClient(baseUrl, configPath));
+  const messageStoreClientRef = useRef<MessageStoreClient>(
+    new MessageStoreClient(getMessageStoreBaseUrl(), getMessageStorePath()),
+  );
+  const traceAbortControllerRef = useRef<AbortController | null>(null);
+  const traceRequestIdRef = useRef<number>(0);
   const [loadResult, setLoadResult] = useState<RulesLoadResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [lastRefreshIso, setLastRefreshIso] = useState<string | null>(null);
@@ -76,8 +108,15 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
   const [selectedPath, setSelectedPath] = useState<RulePath>(new RulePath());
   const [editorState, setEditorState] = useState<RuleEditorState | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [traceState, setTraceState] = useState<RuleTraceState>(IDLE_TRACE_STATE);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
+  useEffect((): (() => void) => {
+    return (): void => {
+      traceAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect((): void => {
     if (!isActive) {
@@ -142,6 +181,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
     setSelectedPath(nextPath);
     setSaveError(null);
     setSaveSuccessMessage(null);
+    setTraceState(IDLE_TRACE_STATE);
   }
 
   /**
@@ -159,6 +199,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
 
     setSaveError(null);
     setSaveSuccessMessage(null);
+    setTraceState(IDLE_TRACE_STATE);
 
     if (item.type === 'new') {
       const newPath = rulesStore.addRule(selectedPath);
@@ -425,19 +466,85 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
 
     setSaveError(null);
     setSaveSuccessMessage(null);
+    const requestedAtIso = new Date().toISOString();
+    const responseTopic = `$MONITOR/automation/${selectedPath.toTopic()}/trace`;
+    const requestId = traceRequestIdRef.current + 1;
+    traceRequestIdRef.current = requestId;
+
+    traceAbortControllerRef.current?.abort();
+    traceAbortControllerRef.current = new AbortController();
+
+    setTraceState({
+      status: 'pending',
+      requestedAtIso,
+      responseTopic,
+      response: null,
+      error: null,
+    });
     setIsSaving(true);
 
+    const debugTopic = `$MONITOR/automation/${selectedPath.toTopic()}/debug`;
+
     try {
-      const debugTopic = `$MONITOR/automation/${selectedPath.toTopic()}/debug`;
       await publishDebugCommand(debugTopic, 'true');
     } catch (unknownError: unknown) {
-      setSaveError(formatRulesPublishError(unknownError));
+      if (requestId !== traceRequestIdRef.current) {
+        return;
+      }
+
+      const publishError = formatRulesPublishError(unknownError);
+      setTraceState({
+        status: 'error',
+        requestedAtIso,
+        responseTopic,
+        response: null,
+        error: publishError,
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      const traceResponse = await pollRuleTraceResponse(
+        messageStoreClientRef.current,
+        responseTopic,
+        requestedAtIso,
+        traceAbortControllerRef.current.signal,
+      );
+
+      if (requestId !== traceRequestIdRef.current) {
+        return;
+      }
+
+      setTraceState({
+        status: 'success',
+        requestedAtIso,
+        responseTopic,
+        response: traceResponse,
+        error: null,
+      });
+    } catch (unknownError: unknown) {
+      if (isAbortError(unknownError)) {
+        return;
+      }
+
+      if (requestId !== traceRequestIdRef.current) {
+        return;
+      }
+
+      const traceError = formatTracePollingError(unknownError);
+      setTraceState({
+        status: 'error',
+        requestedAtIso,
+        responseTopic,
+        response: null,
+        error: traceError,
+      });
       setIsSaving(false);
       return;
     }
 
     setIsSaving(false);
-    setSaveSuccessMessage('Trace gesendet.');
   }
 
   /**
@@ -469,7 +576,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
     const result = await rulesClientRef.current.loadRules();
     if (!result.success && rulesStore !== null) {
       setLoadResult((currentResult: RulesLoadResult | null): RulesLoadResult | null => {
-        if (currentResult === null || !currentResult.success) {
+        if (!currentResult?.success) {
           return result;
         }
 
@@ -513,6 +620,7 @@ export function useRulesController(baseUrl: string, configPath: string, isActive
     navigationItems,
     editorState,
     isSaving,
+    traceState,
     saveError,
     saveSuccessMessage,
     navigateToDepth,
@@ -815,6 +923,15 @@ function formatRulesPublishError(unknownError: unknown): string {
     return `Fehler beim Publish: ${unknownError.message}`;
   }
   return 'Fehler beim Publish: Unbekannter Fehler';
+}
+
+/**
+ * Checks whether an unknown error is an abort-related exception.
+ * @param unknownError Unknown thrown value.
+ * @returns {boolean} True when the error is AbortError.
+ */
+function isAbortError(unknownError: unknown): boolean {
+  return (unknownError as Error | null)?.name === 'AbortError';
 }
 
 /**

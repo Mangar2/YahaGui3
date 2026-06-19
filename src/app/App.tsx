@@ -294,6 +294,7 @@ export default function App(): JSX.Element {
           editorState={rulesController.editorState}
           hasRuleSelection={rulesController.selectedPath.name !== null}
           isSaving={rulesController.isSaving}
+          traceState={rulesController.traceState}
           saveError={rulesController.saveError}
           saveSuccessMessage={rulesController.saveSuccessMessage}
           onSelectNavigationItem={rulesController.selectNavigationItem}
