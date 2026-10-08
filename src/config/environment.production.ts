@@ -1,7 +1,7 @@
 import type { YahaEnvironmentConfig } from './environment.types';
 
 export const ENVIRONMENT: YahaEnvironmentConfig = {
-  apiBaseUrl: 'http://192.168.0.183:80',
+  apiBaseUrl: 'http://192.168.0.4:80',
   messageStorePath: '/store',
   publishPath: '/publish',
   publishTopicSetSuffix: '/set',
